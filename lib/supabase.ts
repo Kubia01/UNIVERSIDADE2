@@ -21,7 +21,6 @@ export interface Course {
   id: string
   title: string
   description: string
-  department: Department
   type: CourseType
   duration: number // in minutes
   instructor: string

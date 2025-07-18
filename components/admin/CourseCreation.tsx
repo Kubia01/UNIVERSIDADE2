@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Upload, Plus, Trash2, Save, Video, FileText, HelpCircle, Link, X } from 'lucide-react'
-import { Department, CourseType, Course, Lesson, LessonType } from '@/lib/supabase'
+import { CourseType, Course, Lesson, LessonType } from '@/lib/supabase'
 
 interface CourseCreationProps {
   course?: Course | null
@@ -14,7 +14,6 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
   const [courseData, setCourseData] = useState({
     title: '',
     description: '',
-    department: 'HR' as Department,
     type: 'training' as CourseType,
     instructor: '',
     thumbnail: '',
@@ -38,7 +37,6 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
       setCourseData({
         title: course.title,
         description: course.description,
-        department: course.department,
         type: course.type,
         instructor: course.instructor,
         thumbnail: course.thumbnail || '',
@@ -47,15 +45,6 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
       })
     }
   }, [course])
-
-  const departments: { value: Department; label: string }[] = [
-    { value: 'HR', label: 'Recursos Humanos' },
-    { value: 'Operations', label: 'Operações' },
-    { value: 'Sales', label: 'Vendas' },
-    { value: 'Engineering', label: 'Engenharia' },
-    { value: 'Finance', label: 'Financeiro' },
-    { value: 'Marketing', label: 'Marketing' }
-  ]
 
   const courseTypes: { value: CourseType; label: string }[] = [
     { value: 'onboarding', label: 'Integração' },
@@ -197,23 +186,6 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Descreva o conteúdo e objetivos do curso"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Departamento *
-              </label>
-              <select
-                value={courseData.department}
-                onChange={(e) => setCourseData({ ...courseData, department: e.target.value as Department })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {departments.map((dept) => (
-                  <option key={dept.value} value={dept.value}>
-                    {dept.label}
-                  </option>
-                ))}
-              </select>
             </div>
 
             <div>
