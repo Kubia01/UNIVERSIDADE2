@@ -10,6 +10,9 @@ import UserManagement from '@/components/admin/UserManagement'
 import CourseManagement from '@/components/admin/CourseManagement'
 import CourseViewer from '@/components/courses/CourseViewer'
 import LessonPlayer from '@/components/courses/LessonPlayer'
+import CertificateManagement from '@/components/certificates/CertificateManagement'
+import CertificateViewer from '@/components/certificates/CertificateViewer'
+import AdminSettings from '@/components/admin/AdminSettings'
 import { PlayCircle, BookOpen, Users, Trophy, Clock, Star } from 'lucide-react'
 
 interface DashboardStats {
@@ -179,13 +182,13 @@ export default function HomePage() {
         return user?.role === 'admin' ? <CourseManagement /> : <CourseViewer user={user!} onCourseSelect={handleCourseSelect} />
       
       case 'certificates':
-        return renderCertificatesView()
+        return user?.role === 'admin' ? <CertificateManagement /> : <CertificateViewer user={user!} />
       
       case 'content':
         return user?.role === 'admin' ? renderContentView() : <div className="p-6 text-center">Acesso negado</div>
       
       case 'settings':
-        return user?.role === 'admin' ? renderSettingsView() : <div className="p-6 text-center">Acesso negado</div>
+        return user?.role === 'admin' ? <AdminSettings /> : <div className="p-6 text-center">Acesso negado</div>
       
       case 'notifications':
         return renderNotificationsView()
@@ -366,15 +369,7 @@ export default function HomePage() {
 
 
 
-  const renderCertificatesView = () => (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Certificados</h2>
-      <div className="text-center py-12">
-        <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500">Funcionalidade em desenvolvimento...</p>
-      </div>
-    </div>
-  )
+
 
   const renderContentView = () => (
     <div className="p-6">
@@ -386,15 +381,7 @@ export default function HomePage() {
     </div>
   )
 
-  const renderSettingsView = () => (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Configurações</h2>
-      <div className="text-center py-12">
-        <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500">Funcionalidade em desenvolvimento...</p>
-      </div>
-    </div>
-  )
+
 
   const renderNotificationsView = () => (
     <div className="p-6">
