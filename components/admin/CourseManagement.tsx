@@ -58,10 +58,9 @@ const CourseManagement: React.FC = () => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesDepartment = selectedDepartment === 'All' || course.department === selectedDepartment
     const matchesType = selectedType === 'All' || course.type === selectedType
 
-    return matchesSearch && matchesDepartment && matchesType
+    return matchesSearch && matchesType
   })
 
   const handleCreateCourse = () => {
