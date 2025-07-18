@@ -79,7 +79,19 @@ const CertificateManagement: React.FC = () => {
         .eq('is_published', true)
 
       if (error) throw error
-      setCourses(data || [])
+      setCourses((data || []).map((item: any) => ({
+        id: item.id,
+        title: item.title,
+        description: '',
+        department: 'HR',
+        type: 'onboarding',
+        duration: 0,
+        instructor: '',
+        is_published: true,
+        is_mandatory: false,
+        created_at: '',
+        updated_at: ''
+      })))
     } catch (error) {
       console.error('Erro ao carregar cursos:', error)
     }
