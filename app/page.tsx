@@ -20,6 +20,7 @@ interface DashboardStats {
   completedCourses: number
   totalWatchTime: number
   certificatesEarned: number
+  totalUsers: number
 }
 
 type AppView = 'dashboard' | 'courses' | 'certificates' | 'users' | 'content' | 'settings' | 'notifications'
@@ -35,7 +36,8 @@ export default function HomePage() {
     totalCourses: 0,
     completedCourses: 0,
     totalWatchTime: 0,
-    certificatesEarned: 0
+    certificatesEarned: 0,
+    totalUsers: 0
   })
   const [recentCourses, setRecentCourses] = useState<any[]>([])
   const router = useRouter()
@@ -104,12 +106,23 @@ export default function HomePage() {
 
       setRecentCourses(courses || [])
 
-      // Buscar estatísticas do usuário (simulado por enquanto)
+      // Buscar estatísticas reais do banco
+      const { data: users, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+      if (usersError) throw usersError
+
+      const { data: certificates, error: certificatesError } = await supabase
+        .from('certificates')
+        .select('*')
+      if (certificatesError) throw certificatesError
+
       setStats({
         totalCourses: courses?.length || 0,
-        completedCourses: 0,
-        totalWatchTime: 0,
-        certificatesEarned: 0
+        completedCourses: 0, // Atualize conforme sua lógica de progresso
+        totalWatchTime: 0,   // Atualize conforme sua lógica de progresso
+        certificatesEarned: certificates?.length || 0,
+        totalUsers: users?.length || 0
       })
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
@@ -367,21 +380,68 @@ export default function HomePage() {
     </div>
   )
 
-
-
-
-
   const renderContentView = () => (
     <div className="p-6">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Gerenciar Conteúdo</h2>
       <div className="text-center py-12">
         <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500">Funcionalidade em desenvolvimento...</p>
+        {recentCourses.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {recentCourses.map((course) => (
+              <div key={course.id} className="card card-hover">
+                <div className="aspect-w-16 aspect-h-9 mb-4">
+                  {course.thumbnail ? (
+                    <img
+                      src={course.thumbnail}
+                      alt={course.title}
+                      className="w-full h-48 object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-full h-48 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <PlayCircle className="h-16 w-16 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <h4 className="font-semibold text-gray-900 mb-2">{course.title}</h4>
+                <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+                  {course.description}
+                </p>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-500">
+                    {Math.floor(course.duration / 60)}h {course.duration % 60}min
+                  </span>
+                  <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    course.type === 'onboarding' ? 'bg-green-100 text-green-800' :
+                    course.type === 'training' ? 'bg-blue-100 text-blue-800' :
+                    course.type === 'compliance' ? 'bg-red-100 text-red-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {course.type === 'onboarding' ? 'Integração' :
+                     course.type === 'training' ? 'Treinamento' :
+                     course.type === 'compliance' ? 'Compliance' : 'Habilidades'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setActiveView('courses')}
+                  className="mt-4 w-full btn-primary text-center block"
+                >
+                  Assistir Curso
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">Nenhum curso disponível no momento.</p>
+            <p className="text-sm text-gray-400 mt-2">
+              Novos cursos serão adicionados em breve!
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
-
-
 
   const renderNotificationsView = () => (
     <div className="p-6">
