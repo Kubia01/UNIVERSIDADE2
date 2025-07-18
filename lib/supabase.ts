@@ -29,7 +29,6 @@ export interface Course {
   lessons?: Lesson[]
   is_published: boolean
   is_mandatory: boolean
-  deadline?: string
   created_at: string
   updated_at: string
 }
