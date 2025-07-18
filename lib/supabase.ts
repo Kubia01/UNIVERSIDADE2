@@ -8,10 +8,11 @@ export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
 // Tipos para o banco de dados
 export interface User {
   id: string
-  email: string
   name: string
+  email: string
+  department: Department
   role: 'admin' | 'user'
-  department?: string
+  avatar?: string
   created_at: string
   updated_at: string
 }
@@ -20,24 +21,28 @@ export interface Course {
   id: string
   title: string
   description: string
+  department: Department
+  type: CourseType
+  duration: number // in minutes
+  instructor: string
   thumbnail?: string
-  duration: number
-  level: 'beginner' | 'intermediate' | 'advanced'
-  category: string
-  created_by: string
+  lessons?: Lesson[]
+  is_published: boolean
+  is_mandatory: boolean
+  deadline?: string
   created_at: string
   updated_at: string
-  is_published: boolean
 }
 
-export interface Video {
+export interface Lesson {
   id: string
   course_id: string
   title: string
-  description?: string
-  video_url: string
-  duration: number
-  order: number
+  description: string
+  type: LessonType
+  content: string // URL for video, PDF, etc.
+  duration?: number
+  order_index: number
   created_at: string
   updated_at: string
 }
@@ -45,13 +50,13 @@ export interface Video {
 export interface UserProgress {
   id: string
   user_id: string
-  video_id: string
   course_id: string
-  completed: boolean
-  progress_percentage: number
-  last_watched_at: string
-  created_at: string
-  updated_at: string
+  lesson_id?: string
+  progress: number // percentage
+  completed_lessons: string[]
+  started_at: string
+  completed_at?: string
+  certificate_id?: string
 }
 
 export interface Certificate {
@@ -59,5 +64,32 @@ export interface Certificate {
   user_id: string
   course_id: string
   issued_at: string
-  certificate_url: string
+  certificate_url?: string
 }
+
+export interface CourseAssignment {
+  id: string
+  user_id: string
+  course_id: string
+  assigned_by: string
+  assigned_at: string
+  deadline?: string
+}
+
+export interface AdminNotification {
+  id: string
+  title: string
+  message: string
+  type: 'welcome' | 'policy' | 'announcement'
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type Department = 'HR' | 'Operations' | 'Sales' | 'Engineering' | 'Finance' | 'Marketing'
+
+export type UserRole = 'user' | 'admin'
+
+export type CourseType = 'onboarding' | 'training' | 'compliance' | 'skills' | 'leadership'
+
+export type LessonType = 'video' | 'document' | 'quiz' | 'link'
