@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Award, Download, Eye, Calendar, BookOpen, User as UserIcon, Share2 } from 'lucide-react'
 import { Certificate, User, Course } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 interface CertificateWithDetails extends Certificate {
   course_title?: string
@@ -26,30 +27,13 @@ const CertificateViewer: React.FC<CertificateViewerProps> = ({ user }) => {
 
   const loadUserCertificates = async () => {
     try {
-      // Simulated data - in real app, this would come from Supabase
-      const mockCertificates: CertificateWithDetails[] = [
-        {
-          id: '1',
-          user_id: user.id,
-          course_id: '1',
-          issued_at: '2024-01-15T10:00:00Z',
-          certificate_url: 'https://example.com/cert1.pdf',
-          course_title: 'Segurança no Trabalho',
-          course_instructor: 'Maria Santos',
-          course_department: 'HR'
-        },
-        {
-          id: '2',
-          user_id: user.id,
-          course_id: '2',
-          issued_at: '2024-02-20T14:30:00Z',
-          certificate_url: 'https://example.com/cert2.pdf',
-          course_title: 'Liderança e Gestão',
-          course_instructor: 'Carlos Oliveira',
-          course_department: 'HR'
-        }
-      ]
-      setCertificates(mockCertificates)
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('certificates')
+        .select('*')
+        .eq('user_id', user.id)
+      if (error) throw error
+      setCertificates(data || [])
     } catch (error) {
       console.error('Erro ao carregar certificados:', error)
     } finally {

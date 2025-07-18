@@ -27,43 +27,12 @@ const CertificateManagement: React.FC = () => {
 
   const loadCertificates = async () => {
     try {
-      // Simulated data - in real app, this would come from Supabase
-      const mockCertificates: CertificateWithDetails[] = [
-        {
-          id: '1',
-          user_id: '1',
-          course_id: '1',
-          issued_at: '2024-01-15T10:00:00Z',
-          certificate_url: 'https://example.com/cert1.pdf',
-          user_name: 'João Silva',
-          user_email: 'joao@empresa.com',
-          course_title: 'Segurança no Trabalho',
-          course_instructor: 'Maria Santos'
-        },
-        {
-          id: '2',
-          user_id: '2',
-          course_id: '2',
-          issued_at: '2024-01-20T14:30:00Z',
-          certificate_url: 'https://example.com/cert2.pdf',
-          user_name: 'Ana Costa',
-          user_email: 'ana@empresa.com',
-          course_title: 'Liderança e Gestão',
-          course_instructor: 'Carlos Oliveira'
-        },
-        {
-          id: '3',
-          user_id: '3',
-          course_id: '1',
-          issued_at: '2024-02-05T09:15:00Z',
-          certificate_url: 'https://example.com/cert3.pdf',
-          user_name: 'Pedro Alves',
-          user_email: 'pedro@empresa.com',
-          course_title: 'Segurança no Trabalho',
-          course_instructor: 'Maria Santos'
-        }
-      ]
-      setCertificates(mockCertificates)
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('certificates')
+        .select('*')
+      if (error) throw error
+      setCertificates(data || [])
     } catch (error) {
       console.error('Erro ao carregar certificados:', error)
     } finally {
