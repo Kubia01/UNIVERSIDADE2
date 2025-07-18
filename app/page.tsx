@@ -3,10 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { supabase, User } from '@/lib/supabase'
+import { supabase, User, Course, Lesson } from '@/lib/supabase'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import UserManagement from '@/components/admin/UserManagement'
+import CourseManagement from '@/components/admin/CourseManagement'
+import CourseViewer from '@/components/courses/CourseViewer'
+import LessonPlayer from '@/components/courses/LessonPlayer'
 import { PlayCircle, BookOpen, Users, Trophy, Clock, Star } from 'lucide-react'
 
 interface DashboardStats {
@@ -23,6 +26,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeView, setActiveView] = useState<AppView>('dashboard')
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+  const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [stats, setStats] = useState<DashboardStats>({
     totalCourses: 0,
     completedCourses: 0,
@@ -113,13 +118,65 @@ export default function HomePage() {
     router.push('/login')
   }
 
+  const handleCourseSelect = (course: Course) => {
+    setSelectedCourse(course)
+    // Auto-select first lesson if available
+    if (course.lessons && course.lessons.length > 0) {
+      setSelectedLesson(course.lessons[0])
+    }
+  }
+
+  const handleLessonStart = (lesson: Lesson) => {
+    setSelectedLesson(lesson)
+  }
+
+  const handleLessonComplete = () => {
+    console.log('Lesson completed')
+    // Here you would typically save progress to the database
+  }
+
+  const handleLessonNavigation = (direction: 'next' | 'previous') => {
+    if (!selectedCourse || !selectedLesson) return
+    
+    const currentIndex = selectedCourse.lessons?.findIndex(l => l.id === selectedLesson.id) || 0
+    let newIndex
+    
+    if (direction === 'next') {
+      newIndex = currentIndex + 1
+    } else {
+      newIndex = currentIndex - 1
+    }
+    
+    if (selectedCourse.lessons && newIndex >= 0 && newIndex < selectedCourse.lessons.length) {
+      setSelectedLesson(selectedCourse.lessons[newIndex])
+    }
+  }
+
   const renderMainContent = () => {
+    // Show lesson player if a lesson is selected
+    if (selectedLesson && selectedCourse && user) {
+      const currentIndex = selectedCourse.lessons?.findIndex(l => l.id === selectedLesson.id) || 0
+      return (
+        <LessonPlayer
+          course={selectedCourse}
+          lesson={selectedLesson}
+          user={user}
+          onBack={() => setSelectedLesson(null)}
+          onComplete={handleLessonComplete}
+          onNext={() => handleLessonNavigation('next')}
+          onPrevious={() => handleLessonNavigation('previous')}
+          hasNext={selectedCourse.lessons ? currentIndex < selectedCourse.lessons.length - 1 : false}
+          hasPrevious={currentIndex > 0}
+        />
+      )
+    }
+
     switch (activeView) {
       case 'users':
         return user?.role === 'admin' ? <UserManagement /> : <div className="p-6 text-center">Acesso negado</div>
       
       case 'courses':
-        return renderCoursesView()
+        return user?.role === 'admin' ? <CourseManagement /> : <CourseViewer user={user!} onCourseSelect={handleCourseSelect} />
       
       case 'certificates':
         return renderCertificatesView()
@@ -307,15 +364,7 @@ export default function HomePage() {
     </div>
   )
 
-  const renderCoursesView = () => (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Cursos e Treinamentos</h2>
-      <div className="text-center py-12">
-        <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500">Funcionalidade em desenvolvimento...</p>
-      </div>
-    </div>
-  )
+
 
   const renderCertificatesView = () => (
     <div className="p-6">
@@ -365,11 +414,20 @@ export default function HomePage() {
     )
   }
 
+  // If lesson player is active, render it full screen
+  if (selectedLesson && selectedCourse && user) {
+    return renderMainContent()
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar 
         activeView={activeView}
-        onViewChange={(view) => setActiveView(view as AppView)}
+        onViewChange={(view) => {
+          setActiveView(view as AppView)
+          setSelectedCourse(null)
+          setSelectedLesson(null)
+        }}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         user={user}
