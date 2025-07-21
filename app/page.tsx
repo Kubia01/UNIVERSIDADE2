@@ -148,10 +148,13 @@ export default function HomePage() {
     }
     // Adaptar para o formato Lesson esperado pelo frontend
     const lessons = (videos || []).map((v: any) => ({ ...v, content: v.video_url }))
+    console.log('Aulas carregadas:', lessons)
     const courseWithLessons = { ...course, lessons }
     setSelectedCourse(courseWithLessons)
     if (lessons && lessons.length > 0) {
       setSelectedLesson(lessons[0])
+    } else {
+      setSelectedLesson(null)
     }
   }
 
