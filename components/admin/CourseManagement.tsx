@@ -95,11 +95,13 @@ const CourseManagement: React.FC = () => {
 
   const handleSaveCourse = async (courseData: any) => {
     try {
+      // Remover o campo lessons antes de salvar no banco
+      const { lessons, ...courseToSave } = courseData;
       if (editingCourse) {
         // Atualizar curso existente
         const { error } = await supabase
           .from('courses')
-          .update(courseData)
+          .update(courseToSave)
           .eq('id', editingCourse.id)
 
         if (error) throw error
@@ -108,7 +110,7 @@ const CourseManagement: React.FC = () => {
         // Criar novo curso
         const { error } = await supabase
           .from('courses')
-          .insert([courseData])
+          .insert([courseToSave])
 
         if (error) throw error
         alert('Curso criado com sucesso!')
