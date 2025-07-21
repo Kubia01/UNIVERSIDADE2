@@ -239,7 +239,10 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
 
                 {/* Action Button */}
                 <button
-                  onClick={() => onCourseSelect(course)}
+                  onClick={() => {
+                    console.log('Botão Assistir Curso clicado para:', course)
+                    onCourseSelect(course)
+                  }}
                   className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                 >
                   <Play className="h-4 w-4 mr-2" />

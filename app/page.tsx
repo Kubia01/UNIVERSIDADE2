@@ -135,6 +135,7 @@ export default function HomePage() {
   }
 
   const handleCourseSelect = async (course: Course) => {
+    console.log('handleCourseSelect chamado para:', course)
     // Buscar as aulas do Supabase
     const { data: videos, error } = await supabase
       .from('videos')
