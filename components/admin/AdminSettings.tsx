@@ -1,7 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Settings, Save, Bell, Mail, Shield, Database, Upload, Download, Users, BookOpen, Award, BarChart3 } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 const AdminSettings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('general')
@@ -34,6 +35,12 @@ const AdminSettings: React.FC = () => {
       backupEnabled: true,
       backupFrequency: 'daily'
     }
+  })
+
+  const [stats, setStats] = useState({
+    users: 0,
+    courses: 0,
+    certificates: 0
   })
 
   const tabs = [
@@ -69,6 +76,20 @@ const AdminSettings: React.FC = () => {
   const generateSystemReport = () => {
     alert('Gerando relatório do sistema...')
   }
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const { count: users } = await supabase.from('profiles').select('*', { count: 'exact', head: true })
+      const { count: courses } = await supabase.from('courses').select('*', { count: 'exact', head: true }).eq('is_published', true)
+      const { count: certificates } = await supabase.from('certificates').select('*', { count: 'exact', head: true })
+      setStats({
+        users: users || 0,
+        courses: courses || 0,
+        certificates: certificates || 0
+      })
+    }
+    fetchStats()
+  }, [])
 
   const renderGeneralSettings = () => (
     <div className="space-y-6">
@@ -435,7 +456,7 @@ const AdminSettings: React.FC = () => {
             <Users className="h-8 w-8 text-blue-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Usuários Ativos</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">47</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.users}</p>
             </div>
           </div>
         </div>
@@ -445,7 +466,7 @@ const AdminSettings: React.FC = () => {
             <BookOpen className="h-8 w-8 text-green-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Cursos Publicados</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">12</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.courses}</p>
             </div>
           </div>
         </div>
@@ -455,7 +476,7 @@ const AdminSettings: React.FC = () => {
             <Award className="h-8 w-8 text-purple-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Certificados Emitidos</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">89</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.certificates}</p>
             </div>
           </div>
         </div>
