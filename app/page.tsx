@@ -153,8 +153,10 @@ export default function HomePage() {
     setSelectedCourse(courseWithLessons)
     if (lessons && lessons.length > 0) {
       setSelectedLesson(lessons[0])
+      console.log('selectedLesson:', lessons[0])
     } else {
       setSelectedLesson(null)
+      console.log('selectedLesson: null')
     }
   }
 
@@ -187,6 +189,7 @@ export default function HomePage() {
   const renderMainContent = () => {
     // Show lesson player if a lesson is selected
     if (selectedLesson && selectedCourse && user) {
+      console.log('Renderizando LessonPlayer com:', { selectedLesson, selectedCourse })
       const currentIndex = selectedCourse.lessons?.findIndex(l => l.id === selectedLesson.id) || 0
       return (
         <LessonPlayer
@@ -409,11 +412,6 @@ export default function HomePage() {
         <div className="loading-spinner"></div>
       </div>
     )
-  }
-
-  // If lesson player is active, render it full screen
-  if (selectedLesson && selectedCourse && user) {
-    return renderMainContent()
   }
 
   return (
