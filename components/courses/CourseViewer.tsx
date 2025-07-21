@@ -17,6 +17,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
   const [selectedDepartment, setSelectedDepartment] = useState<Department | 'All'>('All')
   const [selectedType, setSelectedType] = useState<CourseType | 'All'>('All')
   const [showFilters, setShowFilters] = useState(false)
+  const [courseLessons, setCourseLessons] = useState<{[key: string]: any[]}>({})
 
   const departments: { value: Department | 'All'; label: string }[] = [
     { value: 'All', label: 'Todos os Departamentos' },
@@ -51,10 +52,40 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
 
       if (error) throw error
       setCourses(data || [])
+      
+      // Carregar aulas para cada curso
+      if (data && data.length > 0) {
+        await loadCourseLessons(data)
+      }
     } catch (error) {
       console.error('Erro ao carregar cursos:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadCourseLessons = async (courses: Course[]) => {
+    try {
+      const lessonsMap: {[key: string]: any[]} = {}
+      
+      for (const course of courses) {
+        const { data: videos, error } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('course_id', course.id)
+          .order('order_index', { ascending: true })
+        
+        if (error) {
+          console.error(`Erro ao carregar aulas do curso ${course.id}:`, error)
+          lessonsMap[course.id] = []
+        } else {
+          lessonsMap[course.id] = videos || []
+        }
+      }
+      
+      setCourseLessons(lessonsMap)
+    } catch (error) {
+      console.error('Erro ao carregar aulas dos cursos:', error)
     }
   }
 
@@ -243,21 +274,36 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
                   </div>
 
                   {/* Action Button */}
-                  <button
-                    onClick={() => {
-                      console.log('[CourseViewer] Botão Assistir Curso clicado para:', course)
-                      if (typeof onCourseSelect === 'function') {
-                        onCourseSelect(course)
-                      } else {
-                        console.error('[CourseViewer] onCourseSelect não é uma função!', onCourseSelect)
-                      }
-                    }}
-                    className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    Assistir Curso
-                    <ChevronRight className="h-4 w-4 ml-2" />
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => {
+                        console.log('[CourseViewer] Botão Acessar Módulo clicado para:', course)
+                        console.log('[CourseViewer] Aulas do curso:', courseLessons[course.id])
+                        if (typeof onCourseSelect === 'function') {
+                          // Adicionar as aulas ao curso antes de passar para o callback
+                          const courseWithLessons = {
+                            ...course,
+                            lessons: courseLessons[course.id] || []
+                          }
+                          onCourseSelect(courseWithLessons)
+                        } else {
+                          console.error('[CourseViewer] onCourseSelect não é uma função!', onCourseSelect)
+                        }
+                      }}
+                      className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
+                    >
+                      <BookOpen className="h-5 w-5 mr-2" />
+                      Acessar Módulo
+                      <ChevronRight className="h-4 w-4 ml-2" />
+                    </button>
+                    
+                    {/* Informação sobre aulas */}
+                    <div className="text-center">
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {courseLessons[course.id]?.length || 0} aulas disponíveis
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )

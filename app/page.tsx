@@ -10,6 +10,7 @@ import UserManagement from '@/components/admin/UserManagement'
 import CourseManagement from '@/components/admin/CourseManagement'
 import CourseViewer from '@/components/courses/CourseViewer'
 import LessonPlayer from '@/components/courses/LessonPlayer'
+import CourseModule from '@/components/courses/CourseModule'
 import CertificateManagement from '@/components/certificates/CertificateManagement'
 import CertificateViewer from '@/components/certificates/CertificateViewer'
 import AdminSettings from '@/components/admin/AdminSettings'
@@ -32,6 +33,7 @@ export default function HomePage() {
   const [activeView, setActiveView] = useState<AppView>('dashboard')
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
+  const [showCourseModule, setShowCourseModule] = useState(false)
   const [stats, setStats] = useState<DashboardStats>({
     totalCourses: 0,
     completedCourses: 0,
@@ -143,21 +145,14 @@ export default function HomePage() {
         .eq('course_id', course.id)
         .order('order_index', { ascending: true })
       if (error) {
-        alert('Erro ao carregar aulas do curso!')
-        setSelectedCourse(course)
-        return
+        console.error('Erro ao carregar aulas do curso:', error)
       }
       const lessons = (videos || []).map((v: any) => ({ ...v, content: v.video_url }))
       console.log('[page.tsx] Aulas carregadas:', lessons)
       const courseWithLessons = { ...course, lessons }
       setSelectedCourse(courseWithLessons)
-      if (lessons && lessons.length > 0) {
-        setSelectedLesson(lessons[0])
-        console.log('[page.tsx] selectedLesson:', lessons[0])
-      } else {
-        setSelectedLesson(null)
-        console.log('[page.tsx] selectedLesson: null')
-      }
+      setShowCourseModule(true)
+      setSelectedLesson(null)
     } catch (err) {
       console.error('[page.tsx] Erro em handleCourseSelect:', err)
       alert('Erro inesperado ao buscar aulas do curso.')
@@ -166,6 +161,7 @@ export default function HomePage() {
 
   const handleLessonStart = (lesson: Lesson) => {
     setSelectedLesson(lesson)
+    setShowCourseModule(false)
   }
 
   const handleLessonComplete = () => {
@@ -200,12 +196,30 @@ export default function HomePage() {
           course={selectedCourse}
           lesson={selectedLesson}
           user={user}
-          onBack={() => setSelectedLesson(null)}
+          onBack={() => {
+            setSelectedLesson(null)
+            setShowCourseModule(true)
+          }}
           onComplete={handleLessonComplete}
           onNext={() => handleLessonNavigation('next')}
           onPrevious={() => handleLessonNavigation('previous')}
           hasNext={selectedCourse.lessons ? currentIndex < selectedCourse.lessons.length - 1 : false}
           hasPrevious={currentIndex > 0}
+        />
+      )
+    }
+
+    // Show course module if a course is selected
+    if (showCourseModule && selectedCourse && user) {
+      return (
+        <CourseModule
+          course={selectedCourse}
+          user={user}
+          onBack={() => {
+            setShowCourseModule(false)
+            setSelectedCourse(null)
+          }}
+          onLessonSelect={handleLessonStart}
         />
       )
     }
@@ -389,6 +403,7 @@ export default function HomePage() {
           setActiveView(view as AppView)
           setSelectedCourse(null)
           setSelectedLesson(null)
+          setShowCourseModule(false)
         }}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}

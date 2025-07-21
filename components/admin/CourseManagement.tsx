@@ -16,6 +16,8 @@ const CourseManagement: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit'>('list')
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [selectedLesson, setSelectedLesson] = useState<any | null>(null)
+  const [debugMode, setDebugMode] = useState(false)
+  const [courseVideos, setCourseVideos] = useState<{[key: string]: any[]}>({})
 
   const departments: { value: Department | 'All'; label: string }[] = [
     { value: 'All', label: 'Todos os Departamentos' },
@@ -49,10 +51,40 @@ const CourseManagement: React.FC = () => {
 
       if (error) throw error
       setCourses(data || [])
+      
+      // Carregar aulas para debug
+      if (data && data.length > 0) {
+        await loadAllCourseVideos(data)
+      }
     } catch (error) {
       console.error('Erro ao carregar cursos:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadAllCourseVideos = async (courses: Course[]) => {
+    try {
+      const videosMap: {[key: string]: any[]} = {}
+      
+      for (const course of courses) {
+        const { data: videos, error } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('course_id', course.id)
+          .order('order_index', { ascending: true })
+        
+        if (error) {
+          console.error(`Erro ao carregar aulas do curso ${course.id}:`, error)
+          videosMap[course.id] = []
+        } else {
+          videosMap[course.id] = videos || []
+        }
+      }
+      
+      setCourseVideos(videosMap)
+    } catch (error) {
+      console.error('Erro ao carregar aulas dos cursos:', error)
     }
   }
 
@@ -99,6 +131,10 @@ const CourseManagement: React.FC = () => {
     try {
       // Remover o campo lessons antes de salvar no banco
       const { lessons, ...courseToSave } = courseData;
+      
+      console.log('Salvando curso:', courseToSave)
+      console.log('Aulas para salvar:', lessons)
+      
       if (editingCourse) {
         // Atualizar curso existente
         const { error } = await supabase
@@ -107,8 +143,11 @@ const CourseManagement: React.FC = () => {
           .eq('id', editingCourse.id)
 
         if (error) throw error
+        
         // Atualizar as aulas (videos)
         if (lessons && editingCourse.id) {
+          console.log('Atualizando aulas do curso existente...')
+          
           // Buscar aulas existentes
           const { data: existingLessons } = await supabase
             .from('videos')
@@ -122,39 +161,55 @@ const CourseManagement: React.FC = () => {
 
           // Remover aulas excluídas
           if (removedIds.length > 0) {
-            await supabase.from('videos').delete().in('id', removedIds)
+            console.log('Removendo aulas:', removedIds)
+            const { error: deleteError } = await supabase.from('videos').delete().in('id', removedIds)
+            if (deleteError) {
+              console.error('Erro ao remover aulas:', deleteError)
+              throw deleteError
+            }
           }
+          
           // Atualizar aulas existentes
           for (const lesson of updatedLessons) {
+            console.log('Atualizando aula:', lesson)
             const { content, ...rest } = lesson;
-            await supabase.from('videos').update({
+            const { error: updateError } = await supabase.from('videos').update({
               ...rest,
               video_url: lesson.content,
               updated_at: new Date().toISOString()
             }).eq('id', lesson.id)
+            
+            if (updateError) {
+              console.error('Erro ao atualizar aula:', updateError)
+              throw updateError
+            }
           }
+          
           // Inserir novas aulas
           if (newLessons.length > 0) {
+            console.log('Inserindo novas aulas:', newLessons)
             const lessonsToInsert = newLessons.map((lesson: any, idx: number) => {
               const { content, id, ...rest } = lesson;
               return {
                 ...rest,
                 video_url: lesson.content,
                 course_id: editingCourse.id,
-                order_index: idx,
+                order_index: idx + updatedLessons.length,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               }
             })
-            await supabase.from('videos').insert(lessonsToInsert)
+            const { error: insertError } = await supabase.from('videos').insert(lessonsToInsert)
+            if (insertError) {
+              console.error('Erro ao inserir novas aulas:', insertError)
+              throw insertError
+            }
           }
         }
-        setViewMode('list')
-        setEditingCourse(null)
-        setSelectedCourse(null)
-        setSelectedLesson(null)
-        loadCourses()
+        
+        console.log('Curso e aulas atualizados com sucesso!')
         alert('Curso atualizado com sucesso!')
+        
       } else {
         // Criar novo curso
         const { data, error } = await supabase
@@ -164,8 +219,12 @@ const CourseManagement: React.FC = () => {
           .single()
 
         if (error) throw error
+        
+        console.log('Curso criado:', data)
+        
         // Salvar as aulas na tabela videos
         if (lessons && lessons.length > 0 && data && data.id) {
+          console.log('Salvando aulas do novo curso...')
           const lessonsToInsert = lessons.map((lesson: any, idx: number) => {
             const { content, id, ...rest } = lesson;
             return {
@@ -177,26 +236,44 @@ const CourseManagement: React.FC = () => {
               updated_at: new Date().toISOString()
             }
           })
+          
+          console.log('Aulas para inserir:', lessonsToInsert)
+          
           const { error: lessonsError } = await supabase
             .from('videos')
             .insert(lessonsToInsert)
-          if (lessonsError) throw lessonsError
-          // Aguarde 500ms antes de buscar as aulas do banco
+            
+          if (lessonsError) {
+            console.error('Erro ao salvar aulas:', lessonsError)
+            throw lessonsError
+          }
+          
+          // Verificar se as aulas foram salvas
           await new Promise((resolve) => setTimeout(resolve, 500));
-          const { data: videos } = await supabase
+          const { data: savedVideos, error: verifyError } = await supabase
             .from('videos')
             .select('*')
             .eq('course_id', data.id)
             .order('order_index', { ascending: true })
-          console.log('Aulas salvas no banco:', videos)
+            
+          if (verifyError) {
+            console.error('Erro ao verificar aulas salvas:', verifyError)
+          } else {
+            console.log('Aulas salvas no banco:', savedVideos)
+          }
         }
-        setViewMode('list')
-        setEditingCourse(null)
-        setSelectedCourse(null)
-        setSelectedLesson(null)
-        loadCourses()
+        
+        console.log('Curso e aulas criados com sucesso!')
         alert('Curso criado com sucesso!')
       }
+      
+      // Resetar estados
+      setViewMode('list')
+      setEditingCourse(null)
+      setSelectedCourse(null)
+      setSelectedLesson(null)
+      loadCourses()
+      
     } catch (error: any) {
       console.error('Erro ao salvar curso:', error)
       alert('Erro ao salvar curso: ' + error.message)
@@ -272,14 +349,52 @@ const CourseManagement: React.FC = () => {
             Crie e gerencie cursos de treinamento para sua equipe
           </p>
         </div>
-        <button
-          onClick={handleCreateCourse}
-          className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Curso
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setDebugMode(!debugMode)}
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors text-sm"
+          >
+            {debugMode ? 'Ocultar Debug' : 'Mostrar Debug'}
+          </button>
+          <button
+            onClick={handleCreateCourse}
+            className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Curso
+          </button>
+        </div>
       </div>
+
+      {/* Debug Panel */}
+      {debugMode && (
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-4 border border-gray-300 dark:border-gray-600">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+            Debug - Aulas por Curso
+          </h3>
+          <div className="space-y-2">
+            {courses.map((course) => (
+              <div key={course.id} className="text-sm">
+                <span className="font-medium text-gray-900 dark:text-white">
+                  {course.title}:
+                </span>
+                <span className="ml-2 text-gray-600 dark:text-gray-400">
+                  {courseVideos[course.id]?.length || 0} aulas
+                </span>
+                {courseVideos[course.id]?.length > 0 && (
+                  <div className="ml-4 mt-1">
+                    {courseVideos[course.id].map((video: any, idx: number) => (
+                      <div key={video.id} className="text-xs text-gray-500">
+                        {idx + 1}. {video.title} ({video.type})
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
