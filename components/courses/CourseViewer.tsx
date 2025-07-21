@@ -240,13 +240,17 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
                 {/* Action Button */}
                 <button
                   onClick={() => {
-                    console.log('Botão Assistir Curso clicado para:', course)
-                    onCourseSelect(course)
+                    console.log('[CourseViewer] Botão Assistir Curso clicado para:', course)
+                    if (typeof onCourseSelect === 'function') {
+                      onCourseSelect(course)
+                    } else {
+                      console.error('[CourseViewer] onCourseSelect não é uma função!', onCourseSelect)
+                    }
                   }}
                   className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                 >
                   <Play className="h-4 w-4 mr-2" />
-                  Iniciar Curso
+                  Assistir Curso
                   <ChevronRight className="h-4 w-4 ml-2" />
                 </button>
               </div>

@@ -135,29 +135,32 @@ export default function HomePage() {
   }
 
   const handleCourseSelect = async (course: Course) => {
-    console.log('handleCourseSelect chamado para:', course)
-    // Buscar as aulas do Supabase
-    const { data: videos, error } = await supabase
-      .from('videos')
-      .select('*')
-      .eq('course_id', course.id)
-      .order('order_index', { ascending: true })
-    if (error) {
-      alert('Erro ao carregar aulas do curso!')
-      setSelectedCourse(course)
-      return
-    }
-    // Adaptar para o formato Lesson esperado pelo frontend
-    const lessons = (videos || []).map((v: any) => ({ ...v, content: v.video_url }))
-    console.log('Aulas carregadas:', lessons)
-    const courseWithLessons = { ...course, lessons }
-    setSelectedCourse(courseWithLessons)
-    if (lessons && lessons.length > 0) {
-      setSelectedLesson(lessons[0])
-      console.log('selectedLesson:', lessons[0])
-    } else {
-      setSelectedLesson(null)
-      console.log('selectedLesson: null')
+    console.log('[page.tsx] handleCourseSelect chamado para:', course)
+    try {
+      const { data: videos, error } = await supabase
+        .from('videos')
+        .select('*')
+        .eq('course_id', course.id)
+        .order('order_index', { ascending: true })
+      if (error) {
+        alert('Erro ao carregar aulas do curso!')
+        setSelectedCourse(course)
+        return
+      }
+      const lessons = (videos || []).map((v: any) => ({ ...v, content: v.video_url }))
+      console.log('[page.tsx] Aulas carregadas:', lessons)
+      const courseWithLessons = { ...course, lessons }
+      setSelectedCourse(courseWithLessons)
+      if (lessons && lessons.length > 0) {
+        setSelectedLesson(lessons[0])
+        console.log('[page.tsx] selectedLesson:', lessons[0])
+      } else {
+        setSelectedLesson(null)
+        console.log('[page.tsx] selectedLesson: null')
+      }
+    } catch (err) {
+      console.error('[page.tsx] Erro em handleCourseSelect:', err)
+      alert('Erro inesperado ao buscar aulas do curso.')
     }
   }
 
@@ -413,6 +416,13 @@ export default function HomePage() {
         <div className="loading-spinner"></div>
       </div>
     )
+  }
+
+  if (!selectedCourse) {
+    return <div className="p-6 text-center">Selecione um curso para ver as aulas.</div>
+  }
+  if (selectedCourse && (!selectedCourse.lessons || selectedCourse.lessons.length === 0)) {
+    return <div className="p-6 text-center">Este curso ainda não possui aulas cadastradas.</div>
   }
 
   return (
