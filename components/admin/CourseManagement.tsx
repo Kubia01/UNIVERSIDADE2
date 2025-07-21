@@ -134,7 +134,7 @@ const CourseManagement: React.FC = () => {
           // Inserir novas aulas
           if (newLessons.length > 0) {
             const lessonsToInsert = newLessons.map((lesson: any, idx: number) => {
-              const { content, ...rest } = lesson;
+              const { content, id, ...rest } = lesson;
               return {
                 ...rest,
                 video_url: lesson.content,
@@ -160,7 +160,7 @@ const CourseManagement: React.FC = () => {
         // Salvar as aulas na tabela videos
         if (lessons && lessons.length > 0 && data && data.id) {
           const lessonsToInsert = lessons.map((lesson: any, idx: number) => {
-            const { content, ...rest } = lesson;
+            const { content, id, ...rest } = lesson;
             return {
               ...rest,
               video_url: lesson.content,
