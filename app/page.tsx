@@ -134,11 +134,22 @@ export default function HomePage() {
     router.push('/login')
   }
 
-  const handleCourseSelect = (course: Course) => {
-    setSelectedCourse(course)
-    // Auto-select first lesson if available
-    if (course.lessons && course.lessons.length > 0) {
-      setSelectedLesson(course.lessons[0])
+  const handleCourseSelect = async (course: Course) => {
+    // Buscar as aulas do Supabase
+    const { data: lessons, error } = await supabase
+      .from('lessons')
+      .select('*')
+      .eq('course_id', course.id)
+      .order('order_index', { ascending: true })
+    if (error) {
+      alert('Erro ao carregar aulas do curso!')
+      setSelectedCourse(course)
+      return
+    }
+    const courseWithLessons = { ...course, lessons: lessons || [] }
+    setSelectedCourse(courseWithLessons)
+    if (lessons && lessons.length > 0) {
+      setSelectedLesson(lessons[0])
     }
   }
 
