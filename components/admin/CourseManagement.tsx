@@ -181,7 +181,8 @@ const CourseManagement: React.FC = () => {
             .from('videos')
             .insert(lessonsToInsert)
           if (lessonsError) throw lessonsError
-          // Recarregar aulas do banco para garantir que os ids estejam corretos
+          // Aguarde 500ms antes de buscar as aulas do banco
+          await new Promise((resolve) => setTimeout(resolve, 500));
           const { data: videos } = await supabase
             .from('videos')
             .select('*')
