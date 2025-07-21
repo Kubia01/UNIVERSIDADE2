@@ -117,6 +117,13 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
       return
     }
 
+    // Validar se todas as aulas têm título e conteúdo
+    const invalidLessons = courseData.lessons.filter(lesson => !lesson.title || !lesson.content)
+    if (invalidLessons.length > 0) {
+      alert('Todas as aulas devem ter título e conteúdo preenchidos.')
+      return
+    }
+
     const totalDuration = courseData.lessons.reduce((acc, lesson) => acc + (lesson.duration || 0), 0)
     
     const newCourse = {
@@ -127,6 +134,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
       updated_at: new Date().toISOString()
     }
 
+    console.log('Salvando curso com aulas:', newCourse)
     onSave(newCourse)
   }
 
