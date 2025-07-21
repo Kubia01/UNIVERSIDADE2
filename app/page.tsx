@@ -418,13 +418,6 @@ export default function HomePage() {
     )
   }
 
-  if (!selectedCourse) {
-    return <div className="p-6 text-center">Selecione um curso para ver as aulas.</div>
-  }
-  if (selectedCourse && (!selectedCourse.lessons || selectedCourse.lessons.length === 0)) {
-    return <div className="p-6 text-center">Este curso ainda não possui aulas cadastradas.</div>
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar 
