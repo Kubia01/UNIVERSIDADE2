@@ -105,11 +105,11 @@ const CourseManagement: React.FC = () => {
           .eq('id', editingCourse.id)
 
         if (error) throw error
-        // Atualizar as aulas (lessons)
+        // Atualizar as aulas (videos)
         if (lessons && editingCourse.id) {
           // Buscar aulas existentes
           const { data: existingLessons } = await supabase
-            .from('lessons')
+            .from('videos')
             .select('id')
             .eq('course_id', editingCourse.id)
           const existingIds = (existingLessons || []).map((l: any) => l.id)
@@ -120,25 +120,31 @@ const CourseManagement: React.FC = () => {
 
           // Remover aulas excluídas
           if (removedIds.length > 0) {
-            await supabase.from('lessons').delete().in('id', removedIds)
+            await supabase.from('videos').delete().in('id', removedIds)
           }
           // Atualizar aulas existentes
           for (const lesson of updatedLessons) {
-            await supabase.from('lessons').update({
-              ...lesson,
+            const { content, ...rest } = lesson;
+            await supabase.from('videos').update({
+              ...rest,
+              video_url: lesson.content,
               updated_at: new Date().toISOString()
             }).eq('id', lesson.id)
           }
           // Inserir novas aulas
           if (newLessons.length > 0) {
-            const lessonsToInsert = newLessons.map((lesson: any, idx: number) => ({
-              ...lesson,
-              course_id: editingCourse.id,
-              order_index: idx,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }))
-            await supabase.from('lessons').insert(lessonsToInsert)
+            const lessonsToInsert = newLessons.map((lesson: any, idx: number) => {
+              const { content, ...rest } = lesson;
+              return {
+                ...rest,
+                video_url: lesson.content,
+                course_id: editingCourse.id,
+                order_index: idx,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+            })
+            await supabase.from('videos').insert(lessonsToInsert)
           }
         }
         alert('Curso atualizado com sucesso!')
@@ -151,17 +157,21 @@ const CourseManagement: React.FC = () => {
           .single()
 
         if (error) throw error
-        // Salvar as aulas na tabela lessons
+        // Salvar as aulas na tabela videos
         if (lessons && lessons.length > 0 && data && data.id) {
-          const lessonsToInsert = lessons.map((lesson: any, idx: number) => ({
-            ...lesson,
-            course_id: data.id,
-            order_index: idx,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }))
+          const lessonsToInsert = lessons.map((lesson: any, idx: number) => {
+            const { content, ...rest } = lesson;
+            return {
+              ...rest,
+              video_url: lesson.content,
+              course_id: data.id,
+              order_index: idx,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          })
           const { error: lessonsError } = await supabase
-            .from('lessons')
+            .from('videos')
             .insert(lessonsToInsert)
           if (lessonsError) throw lessonsError
         }

@@ -136,8 +136,8 @@ export default function HomePage() {
 
   const handleCourseSelect = async (course: Course) => {
     // Buscar as aulas do Supabase
-    const { data: lessons, error } = await supabase
-      .from('lessons')
+    const { data: videos, error } = await supabase
+      .from('videos')
       .select('*')
       .eq('course_id', course.id)
       .order('order_index', { ascending: true })
@@ -146,7 +146,9 @@ export default function HomePage() {
       setSelectedCourse(course)
       return
     }
-    const courseWithLessons = { ...course, lessons: lessons || [] }
+    // Adaptar para o formato Lesson esperado pelo frontend
+    const lessons = (videos || []).map((v: any) => ({ ...v, content: v.video_url }))
+    const courseWithLessons = { ...course, lessons }
     setSelectedCourse(courseWithLessons)
     if (lessons && lessons.length > 0) {
       setSelectedLesson(lessons[0])
