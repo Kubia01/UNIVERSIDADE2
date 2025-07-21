@@ -149,6 +149,11 @@ const CourseManagement: React.FC = () => {
             await supabase.from('videos').insert(lessonsToInsert)
           }
         }
+        setViewMode('list')
+        setEditingCourse(null)
+        setSelectedCourse(null)
+        setSelectedLesson(null)
+        loadCourses()
         alert('Curso atualizado com sucesso!')
       } else {
         // Criar novo curso
@@ -176,23 +181,20 @@ const CourseManagement: React.FC = () => {
             .from('videos')
             .insert(lessonsToInsert)
           if (lessonsError) throw lessonsError
+          // Recarregar aulas do banco para garantir que os ids estejam corretos
+          const { data: videos } = await supabase
+            .from('videos')
+            .select('*')
+            .eq('course_id', data.id)
+            .order('order_index', { ascending: true })
+          console.log('Aulas salvas no banco:', videos)
         }
+        setViewMode('list')
+        setEditingCourse(null)
+        setSelectedCourse(null)
+        setSelectedLesson(null)
+        loadCourses()
         alert('Curso criado com sucesso!')
-      }
-
-      setViewMode('list')
-      setEditingCourse(null)
-      setSelectedCourse(null)
-      setSelectedLesson(null)
-      loadCourses()
-      // Recarregar aulas do banco para garantir que os ids estejam corretos
-      if (!editingCourse && data && data.id) {
-        const { data: videos } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('course_id', data.id)
-          .order('order_index', { ascending: true })
-        console.log('Aulas salvas no banco:', videos)
       }
     } catch (error: any) {
       console.error('Erro ao salvar curso:', error)
