@@ -29,7 +29,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, isOpen, onC
         { id: 'courses', icon: BookOpen, label: 'Cursos e Treinamentos' },
         { id: 'certificates', icon: Award, label: 'Certificados' },
         { id: 'users', icon: Users, label: 'Usuários' },
-        { id: 'content', icon: FileText, label: 'Conteúdo' },
         { id: 'settings', icon: Settings, label: 'Configurações' }
       ]
     } else {

@@ -18,6 +18,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
     instructor: '',
     thumbnail: '',
     is_mandatory: false,
+    department: 'HR',
     lessons: [] as any[]
   })
 
@@ -41,6 +42,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
         instructor: course.instructor,
         thumbnail: course.thumbnail || '',
         is_mandatory: course.is_mandatory,
+        department: course.department || 'HR',
         lessons: course.lessons || []
       })
     }
@@ -255,6 +257,24 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
                   Curso obrigatório
                 </span>
               </label>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Departamento *
+              </label>
+              <select
+                value={courseData.department}
+                onChange={(e) => setCourseData({ ...courseData, department: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="HR">Recursos Humanos</option>
+                <option value="Operations">Operações</option>
+                <option value="Sales">Vendas</option>
+                <option value="Engineering">Engenharia</option>
+                <option value="Finance">Financeiro</option>
+                <option value="Marketing">Marketing</option>
+              </select>
             </div>
           </div>
         </div>
