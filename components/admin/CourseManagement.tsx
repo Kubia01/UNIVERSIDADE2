@@ -14,6 +14,8 @@ const CourseManagement: React.FC = () => {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingCourse, setEditingCourse] = useState<Course | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit'>('list')
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
+  const [selectedLesson, setSelectedLesson] = useState<any | null>(null)
 
   const departments: { value: Department | 'All'; label: string }[] = [
     { value: 'All', label: 'Todos os Departamentos' },
@@ -180,7 +182,18 @@ const CourseManagement: React.FC = () => {
 
       setViewMode('list')
       setEditingCourse(null)
+      setSelectedCourse(null)
+      setSelectedLesson(null)
       loadCourses()
+      // Recarregar aulas do banco para garantir que os ids estejam corretos
+      if (!editingCourse && data && data.id) {
+        const { data: videos } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('course_id', data.id)
+          .order('order_index', { ascending: true })
+        console.log('Aulas salvas no banco:', videos)
+      }
     } catch (error: any) {
       console.error('Erro ao salvar curso:', error)
       alert('Erro ao salvar curso: ' + error.message)
