@@ -108,11 +108,27 @@ const CourseManagement: React.FC = () => {
         alert('Curso atualizado com sucesso!')
       } else {
         // Criar novo curso
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('courses')
           .insert([courseToSave])
+          .select()
+          .single()
 
         if (error) throw error
+        // Salvar as aulas na tabela lessons
+        if (lessons && lessons.length > 0 && data && data.id) {
+          const lessonsToInsert = lessons.map((lesson: any, idx: number) => ({
+            ...lesson,
+            course_id: data.id,
+            order_index: idx,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }))
+          const { error: lessonsError } = await supabase
+            .from('lessons')
+            .insert(lessonsToInsert)
+          if (lessonsError) throw lessonsError
+        }
         alert('Curso criado com sucesso!')
       }
 
