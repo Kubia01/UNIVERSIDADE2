@@ -80,9 +80,9 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
       return
     }
 
+    const { id, ...lessonWithoutId } = currentLesson
     const newLesson = {
-      ...currentLesson,
-      id: Date.now().toString(),
+      ...lessonWithoutId,
       order_index: courseData.lessons.length
     }
 
