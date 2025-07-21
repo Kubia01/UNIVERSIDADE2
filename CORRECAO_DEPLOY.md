@@ -141,3 +141,18 @@ Após seguir esses passos, você terá:
 4. **Documente** mudanças que fizer
 
 **🚀 Agora o deploy deve funcionar perfeitamente!**
+
+# Correção de Campos Obrigatórios na Tabela profiles
+
+Execute os comandos abaixo no SQL Editor do Supabase para garantir que todos os campos necessários existem na tabela 'profiles':
+
+```sql
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS department TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS role TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+```
+
+Esses campos são necessários para o correto funcionamento da criação, edição e contagem de usuários no sistema.

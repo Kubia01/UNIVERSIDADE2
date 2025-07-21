@@ -108,7 +108,7 @@ export default function HomePage() {
 
       // Buscar estatísticas reais do banco
       const { data: users, error: usersError } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*')
       if (usersError) throw usersError
 
