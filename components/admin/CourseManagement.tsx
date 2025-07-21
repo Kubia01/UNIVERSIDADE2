@@ -105,6 +105,42 @@ const CourseManagement: React.FC = () => {
           .eq('id', editingCourse.id)
 
         if (error) throw error
+        // Atualizar as aulas (lessons)
+        if (lessons && editingCourse.id) {
+          // Buscar aulas existentes
+          const { data: existingLessons } = await supabase
+            .from('lessons')
+            .select('id')
+            .eq('course_id', editingCourse.id)
+          const existingIds = (existingLessons || []).map((l: any) => l.id)
+          const newLessons = lessons.filter((l: any) => !l.id)
+          const updatedLessons = lessons.filter((l: any) => l.id)
+          const updatedIds = updatedLessons.map((l: any) => l.id)
+          const removedIds = existingIds.filter((id: string) => !updatedIds.includes(id))
+
+          // Remover aulas excluídas
+          if (removedIds.length > 0) {
+            await supabase.from('lessons').delete().in('id', removedIds)
+          }
+          // Atualizar aulas existentes
+          for (const lesson of updatedLessons) {
+            await supabase.from('lessons').update({
+              ...lesson,
+              updated_at: new Date().toISOString()
+            }).eq('id', lesson.id)
+          }
+          // Inserir novas aulas
+          if (newLessons.length > 0) {
+            const lessonsToInsert = newLessons.map((lesson: any, idx: number) => ({
+              ...lesson,
+              course_id: editingCourse.id,
+              order_index: idx,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }))
+            await supabase.from('lessons').insert(lessonsToInsert)
+          }
+        }
         alert('Curso atualizado com sucesso!')
       } else {
         // Criar novo curso
