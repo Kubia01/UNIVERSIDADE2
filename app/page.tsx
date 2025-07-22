@@ -27,7 +27,7 @@ declare global {
 interface DashboardStats {
   totalCourses: number
   completedCourses: number
-  totalWatchTime: number
+  totalWatchTime: number // em minutos
   certificatesEarned: number
   totalUsers: number
 }
@@ -55,6 +55,21 @@ export default function HomePage() {
   const [dashboardProgress, setDashboardProgress] = useState<{[key: string]: number}>({})
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const router = useRouter()
+
+  // Função para formatar tempo de estudo
+  const formatStudyTime = (minutes: number) => {
+    if (minutes < 60) {
+      return `${minutes}min`
+    } else {
+      const hours = Math.floor(minutes / 60)
+      const remainingMinutes = minutes % 60
+      if (remainingMinutes === 0) {
+        return `${hours}h`
+      } else {
+        return `${hours}h ${remainingMinutes}min`
+      }
+    }
+  }
 
   useEffect(() => {
     checkUser()
@@ -383,14 +398,11 @@ export default function HomePage() {
         console.error('Erro inesperado ao calcular tempo de estudo:', error)
       }
 
-      // Converter minutos para horas
-      const totalWatchTimeHours = Math.round(totalWatchTimeMinutes / 60 * 10) / 10
-
-      // Calcular estatísticas finais
+      // Calcular estatísticas finais (manter tempo em minutos para melhor formatação)
       const finalStats = {
         totalCourses: courses?.length || 0,
         completedCourses: completedCoursesCount,
-        totalWatchTime: totalWatchTimeHours,
+        totalWatchTime: totalWatchTimeMinutes, // Manter em minutos
         certificatesEarned: certificates?.length || 0,
         totalUsers: currentUser?.role === 'admin' ? (employees.length || 0) : 0
       }
@@ -638,7 +650,7 @@ export default function HomePage() {
             <Clock className="h-8 w-8 text-blue-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Tempo de Estudo</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalWatchTime}h</p>
+              <p className="text-2xl font-bold text-gray-900">{formatStudyTime(stats.totalWatchTime)}</p>
             </div>
           </div>
         </div>
