@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
-import { supabase, User, Course, Lesson } from '@/lib/supabase'
+import { supabase, User, Course, Lesson, Department } from '@/lib/supabase'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import UserManagement from '@/components/admin/UserManagement'
@@ -163,13 +163,13 @@ export default function HomePage() {
         
         try {
           // Método simplificado: criar lista de usuários mockados para teste
-          const mockUsers = [
+          const mockUsers: User[] = [
             {
               id: user.id,
               name: user.name || 'Admin Principal',
               email: user.email,
-              department: user.department || 'HR',
-              role: user.role,
+              department: (user.department as Department) || 'HR',
+              role: user.role as 'admin' | 'user',
               avatar: user.avatar || '',
               created_at: user.created_at || new Date().toISOString(),
               updated_at: user.updated_at || new Date().toISOString()
@@ -178,8 +178,8 @@ export default function HomePage() {
               id: 'mock-user-1',
               name: 'João Silva',
               email: 'joao@empresa.com',
-              department: 'Engineering',
-              role: 'user',
+              department: 'Engineering' as Department,
+              role: 'user' as 'admin' | 'user',
               avatar: '',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
@@ -188,8 +188,8 @@ export default function HomePage() {
               id: 'mock-user-2',
               name: 'Maria Santos',
               email: 'maria@empresa.com',
-              department: 'HR',
-              role: 'user',
+              department: 'HR' as Department,
+              role: 'user' as 'admin' | 'user',
               avatar: '',
               created_at: new Date().toISOString(),
               updated_at: new Date().toISOString()
@@ -209,19 +209,19 @@ export default function HomePage() {
                 .select('id, name, email, department, role')
                 .order('name', { ascending: true })
 
-              if (!realError && realUsers && realUsers.length > 0) {
-                console.log('Usuários reais carregados com sucesso:', realUsers.length)
-                setEmployees(realUsers.map((u: any) => ({
-                  id: u.id,
-                  name: u.name || u.email || 'Usuário sem nome',
-                  email: u.email,
-                  department: u.department || 'HR',
-                  role: u.role,
-                  avatar: '',
-                  created_at: new Date().toISOString(),
-                  updated_at: new Date().toISOString(),
-                })))
-              } else {
+                             if (!realError && realUsers && realUsers.length > 0) {
+                 console.log('Usuários reais carregados com sucesso:', realUsers.length)
+                 setEmployees(realUsers.map((u: any): User => ({
+                   id: u.id,
+                   name: u.name || u.email || 'Usuário sem nome',
+                   email: u.email,
+                   department: (u.department as Department) || 'HR',
+                   role: (u.role as 'admin' | 'user') || 'user',
+                   avatar: u.avatar || '',
+                   created_at: u.created_at || new Date().toISOString(),
+                   updated_at: u.updated_at || new Date().toISOString(),
+                 })))
+               } else {
                 console.log('Mantendo usuários mockados. Erro:', realError)
               }
             } catch (bgError) {
