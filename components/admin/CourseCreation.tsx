@@ -62,7 +62,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
       console.log('🔄 CORRIGIDO: Carregando aulas para curso:', courseId, 'da tabela VIDEOS')
       console.log('Carregando aulas para curso:', courseId)
       const { data: videos, error } = await supabase
-        .from('course_videos')
+        .from('videos')
         .select('*')
         .eq('course_id', courseId)
         .order('order_index', { ascending: true })
