@@ -358,21 +358,24 @@ export default function HomePage() {
         } else if (completedLessons && completedLessons.length > 0) {
           console.log('Aulas concluídas encontradas:', completedLessons.length)
           
-          // Buscar durações das aulas concluídas
-          const lessonIds = completedLessons.map(l => l.lesson_id)
-          const { data: videosData, error: videosError } = await supabase
-            .from('videos')
-            .select('id, duration')
-            .in('id', lessonIds)
+          // Buscar tempo realmente assistido das aulas concluídas
+          const { data: watchTimeData, error: watchTimeError } = await supabase
+            .from('lesson_progress')
+            .select('lesson_id, time_watched')
+            .eq('user_id', targetUserId)
+            .not('completed_at', 'is', null)
           
-          if (videosError) {
-            console.error('Erro ao carregar dados dos vídeos:', videosError)
-          } else if (videosData) {
-            totalWatchTimeMinutes = videosData.reduce((total, video) => {
-              return total + (video.duration || 0)
+          if (watchTimeError) {
+            console.error('Erro ao carregar tempo assistido:', watchTimeError)
+          } else if (watchTimeData) {
+            // Somar o tempo realmente assistido (em segundos) e converter para minutos
+            const totalWatchTimeSeconds = watchTimeData.reduce((total, lesson) => {
+              return total + (lesson.time_watched || 0)
             }, 0)
-            console.log('Dados dos vídeos:', videosData)
-            console.log('Tempo total calculado (minutos):', totalWatchTimeMinutes)
+            totalWatchTimeMinutes = Math.round(totalWatchTimeSeconds / 60)
+            console.log('Dados do tempo assistido:', watchTimeData)
+            console.log('Tempo total assistido (segundos):', totalWatchTimeSeconds)
+            console.log('Tempo total assistido (minutos):', totalWatchTimeMinutes)
           }
         } else {
           console.log('Nenhuma aula concluída encontrada para o usuário:', targetUserId)

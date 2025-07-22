@@ -32,6 +32,8 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
   const [duration, setDuration] = useState(lesson.duration || 0)
   const [isCompleted, setIsCompleted] = useState(false)
   const [showControls, setShowControls] = useState(true)
+  const [totalWatchedTime, setTotalWatchedTime] = useState(0)
+  const [lastUpdateTime, setLastUpdateTime] = useState(0)
 
   useEffect(() => {
     // Auto-hide controls after 3 seconds
@@ -43,6 +45,32 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
 
     return () => clearTimeout(timer)
   }, [isPlaying, showControls])
+
+  // Rastrear tempo assistido quando o vídeo está sendo reproduzido
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+    
+    if (isPlaying && !isCompleted) {
+      interval = setInterval(() => {
+        const now = Date.now()
+        if (lastUpdateTime > 0) {
+          const timeDiff = (now - lastUpdateTime) / 1000 // Converter para segundos
+          if (timeDiff <= 2) { // Só contar se não houve pausa longa (max 2 segundos)
+            setTotalWatchedTime(prev => prev + timeDiff)
+          }
+        }
+        setLastUpdateTime(now)
+      }, 1000) // Atualizar a cada segundo
+    } else {
+      setLastUpdateTime(0)
+    }
+
+    return () => {
+      if (interval) {
+        clearInterval(interval)
+      }
+    }
+  }, [isPlaying, isCompleted])
 
   const handlePlayPause = () => {
     setIsPlaying(!isPlaying)
@@ -71,15 +99,18 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
       user_id: user.id,
       lesson_id: lesson.id,
       course_id: course.id,
-      completed: completed
+      completed: completed,
+      totalWatchedTime: Math.floor(totalWatchedTime),
+      currentTime: currentTime
     })
 
     try {
-      // Dados para lesson_progress (estrutura simplificada)
+      // Dados para lesson_progress (incluindo tempo assistido)
       const progressData = {
         user_id: user.id,
         lesson_id: lesson.id,
         course_id: course.id,
+        time_watched: Math.floor(totalWatchedTime), // Tempo realmente assistido em segundos
         completed_at: completed ? new Date().toISOString() : null
       }
 
@@ -247,8 +278,9 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
         .single()
 
       if (data && !error) {
-        setIsCompleted(data.is_completed)
+        setIsCompleted(data.completed_at !== null)
         if (data.time_watched > 0) {
+          setTotalWatchedTime(data.time_watched)
           setCurrentTime(data.time_watched)
         }
         console.log('Progresso carregado:', data)
@@ -568,6 +600,13 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${(currentTime / duration) * 100}%` }}
               />
+            </div>
+            
+            {/* Debug: Tempo assistido */}
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-3 p-2 bg-gray-100 dark:bg-gray-800 rounded">
+              <div>⏱️ Tempo assistido: {Math.floor(totalWatchedTime / 60)}m {Math.floor(totalWatchedTime % 60)}s</div>
+              <div>📍 Posição atual: {Math.floor(currentTime / 60)}m {Math.floor(currentTime % 60)}s</div>
+              <div>▶️ Status: {isPlaying ? 'Reproduzindo' : 'Pausado'}</div>
             </div>
           </div>
 
