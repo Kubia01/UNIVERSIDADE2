@@ -201,6 +201,8 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
         .insert([{
           user_id: user.id,
           course_id: course.id,
+          course_title: course.title, // Adicionar nome do curso
+          user_name: user.name,       // Adicionar nome do usuário
           certificate_url: certificateUrl,
           issued_at: new Date().toISOString()
         }])
@@ -212,7 +214,7 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
       } else {
         console.log('Certificado gerado com sucesso:', data)
         // Mostrar notificação de certificado gerado
-        alert(`🎉 Parabéns! Você concluiu o curso "${course.title}" e ganhou um certificado!`)
+        alert(`🎉 Parabéns ${user.name}! Você concluiu o curso "${course.title}" e ganhou um certificado!`)
       }
     } catch (error) {
       console.error('Erro inesperado ao gerar certificado:', error)
