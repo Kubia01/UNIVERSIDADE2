@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Search, Plus, Edit, Trash2, Eye, BookOpen, Play, ArrowLeft } from 'lucide-react'
-import { supabase, Course, Department, CourseType } from '@/lib/supabase'
+import { Search, Plus, Edit, Trash2, Play, Users, BookOpen, Clock, Award, Filter, X } from 'lucide-react'
+import { supabase, Course, User, Department, CourseType } from '@/lib/supabase'
 import CourseCreation from './CourseCreation'
+import LessonEditModal from './LessonEditModal'
 
 const CourseManagement: React.FC = () => {
   const [courses, setCourses] = useState<Course[]>([])
@@ -16,8 +17,10 @@ const CourseManagement: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'create' | 'edit'>('list')
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [selectedLesson, setSelectedLesson] = useState<any | null>(null)
+  const [showLessonEditModal, setShowLessonEditModal] = useState(false)
   const [debugMode, setDebugMode] = useState(false)
   const [courseVideos, setCourseVideos] = useState<{[key: string]: any[]}>({})
+  const [courseDetails, setCourseDetails] = useState<{[key: string]: any}>({})
 
   const departments: { value: Department | 'All'; label: string }[] = [
     { value: 'All', label: 'Todos os Departamentos' },
@@ -321,6 +324,40 @@ const CourseManagement: React.FC = () => {
     return labels[type]
   }
 
+  const handleEditLesson = (lesson: any, course: Course) => {
+    console.log('Editando aula:', lesson)
+    setSelectedLesson(lesson)
+    setSelectedCourse(course)
+    setShowLessonEditModal(true)
+  }
+
+  const handleLessonEditSave = async () => {
+    console.log('Aula editada, recarregando dados...')
+    await loadCourses()
+    setShowLessonEditModal(false)
+    setSelectedLesson(null)
+    setSelectedCourse(null)
+  }
+
+  const handleDeleteLesson = async (lessonId: string, lessonTitle: string) => {
+    if (confirm(`Tem certeza que deseja excluir a aula "${lessonTitle}"?`)) {
+      try {
+        const { error } = await supabase
+          .from('videos')
+          .delete()
+          .eq('id', lessonId)
+
+        if (error) throw error
+
+        alert('Aula excluída com sucesso!')
+        await loadCourses()
+      } catch (error: any) {
+        console.error('Erro ao excluir aula:', error)
+        alert('Erro ao excluir aula: ' + error.message)
+      }
+    }
+  }
+
   if (viewMode === 'create' || viewMode === 'edit') {
     return (
       <CourseCreation
@@ -384,10 +421,26 @@ const CourseManagement: React.FC = () => {
                   {courseVideos[course.id]?.length || 0} aulas
                 </span>
                 {courseVideos[course.id]?.length > 0 && (
-                  <div className="ml-4 mt-1">
+                  <div className="ml-4 mt-1 space-y-1">
                     {courseVideos[course.id].map((video: any, idx: number) => (
-                      <div key={video.id} className="text-xs text-gray-500">
-                        {idx + 1}. {video.title} ({video.type})
+                      <div key={video.id} className="flex items-center justify-between text-xs text-gray-500 bg-gray-50 dark:bg-gray-700 p-2 rounded">
+                        <span>{idx + 1}. {video.title} ({video.type})</span>
+                        <div className="flex space-x-1">
+                          <button
+                            onClick={() => handleEditLesson(video, course)}
+                            className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                            title="Editar aula"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteLesson(video.id, video.title)}
+                            className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                            title="Excluir aula"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -540,6 +593,21 @@ const CourseManagement: React.FC = () => {
             Comece criando seu primeiro curso de treinamento!
           </p>
         </div>
+      )}
+
+      {/* Modal de Edição de Aula */}
+      {showLessonEditModal && selectedLesson && selectedCourse && (
+        <LessonEditModal
+          lesson={selectedLesson}
+          courseId={selectedCourse.id}
+          isOpen={showLessonEditModal}
+          onClose={() => {
+            setShowLessonEditModal(false)
+            setSelectedLesson(null)
+            setSelectedCourse(null)
+          }}
+          onSave={handleLessonEditSave}
+        />
       )}
     </div>
   )

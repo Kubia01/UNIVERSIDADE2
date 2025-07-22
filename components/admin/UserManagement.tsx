@@ -105,26 +105,36 @@ const UserManagement: React.FC = () => {
         throw checkError
       }
 
-      // Criar usuário no Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      console.log('Criando usuário no Supabase Auth...')
+      
+      // Criar usuário no Supabase Auth usando admin API
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: newUser.email,
         password: newUser.password,
-        options: {
-          data: {
-            name: newUser.name,
-            department: newUser.department,
-            role: newUser.role
-          }
+        email_confirm: true, // Confirmar email automaticamente
+        user_metadata: {
+          name: newUser.name,
+          department: newUser.department,
+          role: newUser.role
         }
       })
 
-      if (authError) throw authError
+      if (authError) {
+        console.error('Erro no auth:', authError)
+        throw authError
+      }
 
-      // Criar perfil na tabela profiles apenas se o usuário foi criado com sucesso
+      console.log('Usuário criado no auth:', authData.user?.id)
+
+      // Aguardar um pouco para garantir que o usuário foi criado
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Criar perfil na tabela profiles
       if (authData.user) {
+        console.log('Criando perfil para usuário:', authData.user.id)
         const { error: profileError } = await supabase
           .from('profiles')
-          .upsert([{
+          .insert([{
             id: authData.user.id,
             name: newUser.name,
             email: newUser.email,
@@ -132,11 +142,12 @@ const UserManagement: React.FC = () => {
             role: newUser.role,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
-          }], {
-            onConflict: 'id'
-          })
+          }])
 
-        if (profileError) throw profileError
+        if (profileError) {
+          console.error('Erro ao criar perfil:', profileError)
+          throw profileError
+        }
       }
 
       setShowCreateModal(false)
@@ -153,6 +164,8 @@ const UserManagement: React.FC = () => {
       console.error('Erro ao criar usuário:', error)
       if (error.message.includes('duplicate key')) {
         alert('Este email já está cadastrado no sistema.')
+      } else if (error.message.includes('foreign key')) {
+        alert('Erro interno: Problema na criação do usuário. Tente novamente.')
       } else {
         alert('Erro ao criar usuário: ' + error.message)
       }
