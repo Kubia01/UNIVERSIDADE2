@@ -111,24 +111,28 @@ export default function HomePage() {
 
       // Se for admin, carregar lista de funcionários
       if (user?.role === 'admin') {
-        console.log('Usuário é admin, carregando lista de funcionários...')
-        const { data: allUsers, error: usersError } = await supabase
-          .from('profiles')
-          .select('*')
-          .order('name', { ascending: true })
-        
-        if (usersError) {
-          console.error('Erro ao carregar usuários:', usersError)
-          setEmployees([])
-        } else {
-          console.log('Funcionários carregados:', allUsers?.length || 0, 'usuários')
-          console.log('Lista de funcionários:', allUsers?.map(u => ({ name: u.name, email: u.email })))
-          setEmployees(allUsers || [])
-        }
-      } else {
-        console.log('Usuário não é admin, não carregando lista de funcionários')
-        setEmployees([])
-      }
+  const { data: allUsers, error: usersError } = await supabase
+    .from('profiles')
+    .select('*')
+    .order('name', { ascending: true });
+
+  if (!usersError && allUsers) {
+    setEmployees(allUsers.map((u: any) => ({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      department: u.department || 'HR',
+      role: u.role,
+      avatar: u.avatar || '',
+      created_at: u.created_at,
+      updated_at: u.updated_at,
+    })));
+  } else {
+    setEmployees([]);
+  }
+} else {
+  setEmployees([]);
+}
 
       // Buscar estatísticas básicas
       const { data: certificates, error: certificatesError } = await supabase
