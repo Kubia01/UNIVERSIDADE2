@@ -52,6 +52,7 @@ export default function HomePage() {
     totalUsers: 0
   })
   const [recentCourses, setRecentCourses] = useState<any[]>([])
+  const [dashboardProgress, setDashboardProgress] = useState<{[key: string]: number}>({})
   const router = useRouter()
 
   useEffect(() => {
@@ -208,6 +209,12 @@ export default function HomePage() {
         setRecentCourses([])
       } else {
         setRecentCourses(courses || [])
+        
+        // Carregar progresso dos cursos para o dashboard
+        if (courses && courses.length > 0) {
+          const courseIds = courses.map(c => c.id)
+          loadDashboardProgress(courseIds, currentUser.id)
+        }
       }
 
       // Se for admin, carregar lista de funcionários
@@ -315,6 +322,27 @@ export default function HomePage() {
       })
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
+    }
+  }
+
+  const loadDashboardProgress = async (courseIds: string[], userId: string) => {
+    try {
+      const { data: progressData, error } = await supabase
+        .from('user_progress')
+        .select('course_id, progress')
+        .eq('user_id', userId)
+        .in('course_id', courseIds)
+
+      if (!error && progressData) {
+        const progressMap: {[key: string]: number} = {}
+        progressData.forEach(p => {
+          progressMap[p.course_id] = p.progress || 0
+        })
+        setDashboardProgress(progressMap)
+        console.log('Progresso do dashboard carregado:', progressMap)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar progresso do dashboard:', error)
     }
   }
 
@@ -613,12 +641,58 @@ export default function HomePage() {
         </div>
 
         {recentCourses.length > 0 ? (
-          <div className="text-center py-12">
-            <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Nenhum curso disponível no momento.</p>
-            <p className="text-sm text-gray-400 mt-2">
-              Novos cursos serão adicionados em breve!
-            </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {recentCourses.map((course) => (
+              <div key={course.id} className="card hover:shadow-lg transition-shadow">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-gray-900 mb-2">{course.title}</h4>
+                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{course.description}</p>
+                    <div className="flex items-center text-xs text-gray-500 space-x-4">
+                      <span className="flex items-center">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {course.duration || 15}min
+                      </span>
+                      <span className="flex items-center">
+                        <Users className="h-3 w-3 mr-1" />
+                        {course.department}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                                 {/* Progress indicator */}
+                 <div className="mb-4">
+                   <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+                     <span>Progresso</span>
+                     <span>{dashboardProgress[course.id] || 0}%</span>
+                   </div>
+                   <div className="w-full bg-gray-200 rounded-full h-2">
+                     <div 
+                       className={`h-2 rounded-full transition-all duration-500 ${
+                         (dashboardProgress[course.id] || 0) >= 100 
+                           ? 'bg-green-500' 
+                           : 'bg-blue-500'
+                       }`} 
+                       style={{ width: `${dashboardProgress[course.id] || 0}%` }}
+                     ></div>
+                   </div>
+                   {(dashboardProgress[course.id] || 0) >= 100 && (
+                     <div className="flex items-center text-xs text-green-600 mt-1">
+                       <Trophy className="h-3 w-3 mr-1" />
+                       Curso Concluído!
+                     </div>
+                   )}
+                 </div>
+
+                <button
+                  onClick={() => setActiveView('courses')}
+                  className="w-full bg-primary-600 text-white py-2 px-4 rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
+                >
+                  Acessar Curso
+                </button>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="text-center py-12">
