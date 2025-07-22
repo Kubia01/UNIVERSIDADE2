@@ -59,7 +59,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
 
   const loadExistingLessons = async (courseId: string) => {
     try {
-      console.log('Carregando aulas para curso:', courseId)
+      console.log('🔄 CORRIGIDO: Carregando aulas para curso:', courseId, 'da tabela VIDEOS')
       const { data: videos, error } = await supabase
         .from('videos')
         .select('*')
