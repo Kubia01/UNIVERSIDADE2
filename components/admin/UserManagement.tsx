@@ -200,21 +200,58 @@ const UserManagement: React.FC = () => {
     }
   }
 
-  const handleDelete = async (userId: string) => {
-    if (confirm('Tem certeza que deseja excluir este usuário?')) {
+  const handleDelete = async (userId: string, userName: string) => {
+    if (confirm(`Tem certeza que deseja excluir o usuário "${userName}"?\n\nEsta ação irá:\n- Remover o usuário do sistema\n- Excluir todo o progresso de cursos\n- Remover certificados emitidos\n\nEsta ação não pode ser desfeita.`)) {
       try {
-        const { error } = await supabase
+        setLoading(true)
+        
+        // Primeiro, deletar dados relacionados (devido às foreign keys)
+        
+        // 1. Deletar progresso das aulas
+        const { error: lessonProgressError } = await supabase
+          .from('lesson_progress')
+          .delete()
+          .eq('user_id', userId)
+        
+        if (lessonProgressError) {
+          console.error('Erro ao deletar progresso das aulas:', lessonProgressError)
+        }
+
+        // 2. Deletar progresso dos cursos
+        const { error: courseProgressError } = await supabase
+          .from('user_progress')
+          .delete()
+          .eq('user_id', userId)
+        
+        if (courseProgressError) {
+          console.error('Erro ao deletar progresso dos cursos:', courseProgressError)
+        }
+
+        // 3. Deletar certificados
+        const { error: certificatesError } = await supabase
+          .from('certificates')
+          .delete()
+          .eq('user_id', userId)
+        
+        if (certificatesError) {
+          console.error('Erro ao deletar certificados:', certificatesError)
+        }
+
+        // 4. Finalmente, deletar o perfil
+        const { error: profileError } = await supabase
           .from('profiles')
           .delete()
           .eq('id', userId)
 
-        if (error) throw error
+        if (profileError) throw profileError
 
-        alert('Usuário excluído com sucesso!')
-        loadUsers()
+        alert(`Usuário "${userName}" foi excluído com sucesso!`)
+        await loadUsers()
       } catch (error: any) {
         console.error('Erro ao excluir usuário:', error)
         alert('Erro ao excluir usuário: ' + error.message)
+      } finally {
+        setLoading(false)
       }
     }
   }
@@ -409,7 +446,7 @@ const UserManagement: React.FC = () => {
                         <RotateCcw className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => handleDelete(user.id, user.name)}
                         className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
                         title="Excluir"
                       >

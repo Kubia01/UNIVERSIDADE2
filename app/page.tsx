@@ -52,6 +52,19 @@ export default function HomePage() {
     loadDashboardData()
   }, [])
 
+  useEffect(() => {
+    if (user) {
+      loadDashboardData()
+    }
+  }, [user])
+
+  // Recarregar dados quando funcionário selecionado mudar
+  useEffect(() => {
+    if (user && selectedEmployee) {
+      loadDashboardData()
+    }
+  }, [selectedEmployee])
+
   const checkUser = async () => {
     try {
       const currentUser = await getCurrentUser()
@@ -112,14 +125,19 @@ export default function HomePage() {
       setRecentCourses(courses || [])
 
       // Buscar estatísticas reais do banco
-      const { data: users, error: usersError } = await supabase
+      const { data: allUsers, error: usersError } = await supabase
         .from('profiles')
         .select('*')
-      if (usersError) throw usersError
-
-      // Se for admin, carregar lista de funcionários
-      if (user?.role === 'admin') {
-        setEmployees(users || [])
+        .order('name', { ascending: true })
+      
+      if (usersError) {
+        console.error('Erro ao carregar usuários:', usersError)
+      } else {
+        console.log('Usuários carregados:', allUsers)
+        // Se for admin, carregar lista de funcionários
+        if (user?.role === 'admin') {
+          setEmployees(allUsers || [])
+        }
       }
 
       const { data: certificates, error: certificatesError } = await supabase
@@ -127,12 +145,28 @@ export default function HomePage() {
         .select('*')
       if (certificatesError) throw certificatesError
 
+      // Calcular estatísticas baseadas no usuário selecionado ou geral
+      const targetUserId = selectedEmployee?.id || user?.id
+      
+      // Buscar progresso do usuário específico
+      let userProgressData = []
+      if (targetUserId) {
+        const { data: progressData, error: progressError } = await supabase
+          .from('user_progress')
+          .select('*')
+          .eq('user_id', targetUserId)
+        
+        if (!progressError) {
+          userProgressData = progressData || []
+        }
+      }
+
       setStats({
         totalCourses: courses?.length || 0,
-        completedCourses: 0, // Atualize conforme sua lógica de progresso
-        totalWatchTime: 0,   // Atualize conforme sua lógica de progresso
-        certificatesEarned: certificates?.length || 0,
-        totalUsers: users?.length || 0
+        completedCourses: userProgressData.filter(p => p.completed_at).length || 0,
+        totalWatchTime: 0,   // Pode ser calculado baseado no progresso
+        certificatesEarned: certificates?.filter(c => c.user_id === targetUserId).length || 0,
+        totalUsers: allUsers?.length || 0
       })
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
