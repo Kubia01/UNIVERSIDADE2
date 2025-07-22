@@ -49,18 +49,11 @@ export default function HomePage() {
 
   useEffect(() => {
     checkUser()
-    loadDashboardData()
   }, [])
-
-  useEffect(() => {
-    if (user) {
-      loadDashboardData()
-    }
-  }, [user])
 
   // Recarregar dados quando funcionário selecionado mudar
   useEffect(() => {
-    if (user && selectedEmployee) {
+    if (user && user.role === 'admin') {
       loadDashboardData()
     }
   }, [selectedEmployee])
@@ -68,39 +61,20 @@ export default function HomePage() {
   const checkUser = async () => {
     try {
       const currentUser = await getCurrentUser()
-      if (!currentUser) {
-        router.push('/login')
-        return
-      }
-      
-      // Buscar perfil do usuário
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', currentUser.id)
-        .single()
-
-      if (error || !profile) {
-        // Se não há perfil, criar um básico
-        const { data: newProfile, error: createError } = await supabase
+      if (currentUser) {
+        const { data: profile } = await supabase
           .from('profiles')
-          .insert([{
-            id: currentUser.id,
-            name: currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'Usuário',
-            email: currentUser.email || '',
-            department: 'HR',
-            role: 'user'
-          }])
-          .select()
+          .select('*')
+          .eq('id', currentUser.id)
           .single()
-
-        if (createError) {
-          console.error('Erro ao criar perfil:', createError)
-        } else {
-          setUser(newProfile)
+        
+        if (profile) {
+          setUser(profile)
+          // Carregar dados do dashboard após definir o usuário
+          setTimeout(() => loadDashboardData(), 100)
         }
       } else {
-        setUser(profile)
+        router.push('/login')
       }
     } catch (error) {
       console.error('Erro ao verificar usuário:', error)
@@ -111,6 +85,8 @@ export default function HomePage() {
   }
 
   const loadDashboardData = async () => {
+    if (!user) return
+
     try {
       // Buscar cursos disponíveis
       const { data: courses, error: coursesError } = await supabase
@@ -120,53 +96,45 @@ export default function HomePage() {
         .order('created_at', { ascending: false })
         .limit(6)
 
-      if (coursesError) throw coursesError
-
-      setRecentCourses(courses || [])
-
-      // Buscar estatísticas reais do banco
-      const { data: allUsers, error: usersError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('name', { ascending: true })
-      
-      if (usersError) {
-        console.error('Erro ao carregar usuários:', usersError)
+      if (coursesError) {
+        console.error('Erro ao carregar cursos:', coursesError)
+        setRecentCourses([])
       } else {
-        console.log('Usuários carregados:', allUsers)
-        // Se for admin, carregar lista de funcionários
-        if (user?.role === 'admin') {
+        setRecentCourses(courses || [])
+      }
+
+      // Se for admin, carregar lista de funcionários
+      if (user?.role === 'admin') {
+        const { data: allUsers, error: usersError } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('name', { ascending: true })
+        
+        if (usersError) {
+          console.error('Erro ao carregar usuários:', usersError)
+          setEmployees([])
+        } else {
+          console.log('Usuários carregados:', allUsers)
           setEmployees(allUsers || [])
         }
       }
 
+      // Buscar estatísticas básicas
       const { data: certificates, error: certificatesError } = await supabase
         .from('certificates')
         .select('*')
-      if (certificatesError) throw certificatesError
-
-      // Calcular estatísticas baseadas no usuário selecionado ou geral
-      const targetUserId = selectedEmployee?.id || user?.id
       
-      // Buscar progresso do usuário específico
-      let userProgressData = []
-      if (targetUserId) {
-        const { data: progressData, error: progressError } = await supabase
-          .from('user_progress')
-          .select('*')
-          .eq('user_id', targetUserId)
-        
-        if (!progressError) {
-          userProgressData = progressData || []
-        }
+      if (certificatesError) {
+        console.error('Erro ao carregar certificados:', certificatesError)
       }
 
+      // Calcular estatísticas simples
       setStats({
         totalCourses: courses?.length || 0,
-        completedCourses: userProgressData.filter(p => p.completed_at).length || 0,
-        totalWatchTime: 0,   // Pode ser calculado baseado no progresso
-        certificatesEarned: certificates?.filter(c => c.user_id === targetUserId).length || 0,
-        totalUsers: allUsers?.length || 0
+        completedCourses: 0,
+        totalWatchTime: 0,
+        certificatesEarned: certificates?.length || 0,
+        totalUsers: employees.length || 0
       })
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
