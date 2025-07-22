@@ -17,6 +17,13 @@ import CertificateViewer from '@/components/certificates/CertificateViewer'
 import AdminSettings from '@/components/admin/AdminSettings'
 import { PlayCircle, BookOpen, Users, Trophy, Clock, Star } from 'lucide-react'
 
+// Declaração global para evitar múltiplas execuções
+declare global {
+  interface Window {
+    __userLoadInProgress?: boolean
+  }
+}
+
 interface DashboardStats {
   totalCourses: number
   completedCourses: number
@@ -56,7 +63,7 @@ export default function HomePage() {
     if (user && user.role === 'admin') {
       loadDashboardData(user)
     }
-  }, [selectedEmployee, user])
+  }, [selectedEmployee]) // Removido user da dependência para evitar loop
 
   const checkUser = async () => {
     try {
@@ -83,6 +90,24 @@ export default function HomePage() {
           // Se o perfil não existe ou há erro 500, tentar criar um básico
           if (profileError.code === 'PGRST116' || profileError.code === '500' || profileError.message?.includes('500')) {
             console.log('Perfil não encontrado, tentando criar...')
+            
+            // Primeiro, verificar se o perfil já existe (pode ser problema de RLS)
+            const { data: existingProfile, error: checkError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('email', currentUser.email)
+              .maybeSingle()
+            
+            if (existingProfile) {
+              console.log('Perfil encontrado pelo email:', existingProfile)
+              setUser(existingProfile)
+              setTimeout(() => {
+                loadDashboardData(existingProfile)
+              }, 500)
+              return
+            }
+            
+            // Se realmente não existe, tentar criar
             const { data: newProfile, error: createError } = await supabase
               .from('profiles')
               .insert([{
@@ -97,6 +122,27 @@ export default function HomePage() {
             
             if (createError) {
               console.error('Erro ao criar perfil:', createError)
+              console.error('Código do erro de criação:', createError.code)
+              
+              // Se erro 409 (conflito), tentar buscar o perfil existente
+              if (createError.code === '23505' || createError.code === '409') {
+                console.log('Perfil já existe, tentando buscar novamente...')
+                const { data: retryProfile } = await supabase
+                  .from('profiles')
+                  .select('*')
+                  .eq('id', currentUser.id)
+                  .single()
+                
+                if (retryProfile) {
+                  console.log('Perfil encontrado na segunda tentativa:', retryProfile)
+                  setUser(retryProfile)
+                  setTimeout(() => {
+                    loadDashboardData(retryProfile)
+                  }, 500)
+                  return
+                }
+              }
+              
               router.push('/login')
               return
             } else {
@@ -206,35 +252,40 @@ export default function HomePage() {
           console.log('Usando usuários mockados temporariamente:', mockUsers.length)
           setEmployees(mockUsers)
 
-          // Tentativa em background para carregar usuários reais
-          setTimeout(async () => {
-            console.log('Tentando carregar usuários reais em background...')
-            
-            try {
-              const { data: realUsers, error: realError } = await supabase
-                .from('profiles')
-                .select('id, name, email, department, role')
-                .order('name', { ascending: true })
+                    // Tentativa em background para carregar usuários reais (apenas uma vez)
+          if (!window.__userLoadInProgress) {
+            window.__userLoadInProgress = true
+            setTimeout(async () => {
+              console.log('Tentando carregar usuários reais em background...')
+              
+              try {
+                const { data: realUsers, error: realError } = await supabase
+                  .from('profiles')
+                  .select('id, name, email, department, role')
+                  .order('name', { ascending: true })
 
-                             if (!realError && realUsers && realUsers.length > 0) {
-                 console.log('Usuários reais carregados com sucesso:', realUsers.length)
-                 setEmployees(realUsers.map((u: any): User => ({
-                   id: u.id,
-                   name: u.name || u.email || 'Usuário sem nome',
-                   email: u.email,
-                   department: (u.department as Department) || 'HR',
-                   role: (u.role as 'admin' | 'user') || 'user',
-                   avatar: u.avatar || '',
-                   created_at: u.created_at || new Date().toISOString(),
-                   updated_at: u.updated_at || new Date().toISOString(),
-                 })))
-               } else {
-                console.log('Mantendo usuários mockados. Erro:', realError)
+                if (!realError && realUsers && realUsers.length > 0) {
+                  console.log('Usuários reais carregados com sucesso:', realUsers.length)
+                  setEmployees(realUsers.map((u: any): User => ({
+                    id: u.id,
+                    name: u.name || u.email || 'Usuário sem nome',
+                    email: u.email,
+                    department: (u.department as Department) || 'HR',
+                    role: (u.role as 'admin' | 'user') || 'user',
+                    avatar: u.avatar || '',
+                    created_at: u.created_at || new Date().toISOString(),
+                    updated_at: u.updated_at || new Date().toISOString(),
+                  })))
+                } else {
+                  console.log('Mantendo usuários mockados. Erro:', realError)
+                }
+              } catch (bgError) {
+                console.log('Erro no carregamento em background:', bgError)
+              } finally {
+                window.__userLoadInProgress = false
               }
-            } catch (bgError) {
-              console.log('Erro no carregamento em background:', bgError)
-            }
-          }, 1000)
+            }, 1000)
+          }
 
         } catch (error) {
           console.error('Erro ao configurar usuários:', error)
