@@ -72,7 +72,7 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
       lesson_id: lesson.id,
       course_id: course.id,
       is_completed: completed,
-      progress_percentage: completed ? 100 : Math.min((currentTime / duration) * 100, 95),
+      progress_percentage: completed ? 100.00 : Math.min((currentTime / duration) * 100, 95),
       time_watched: Math.floor(currentTime)
     })
 
@@ -82,7 +82,7 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
         lesson_id: lesson.id,
         course_id: course.id,
         is_completed: completed,
-        progress_percentage: completed ? 100 : Math.min((currentTime / duration) * 100, 95),
+        progress_percentage: completed ? 100.00 : Math.min((currentTime / duration) * 100, 95),
         time_watched: Math.floor(currentTime),
         completed_at: completed ? new Date().toISOString() : null,
         updated_at: new Date().toISOString()
@@ -103,7 +103,12 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
         
         if (completed) {
           console.log('Aula marcada como concluída, verificando conclusão do curso...')
-          setTimeout(() => checkCourseCompletion(), 2000) // Aguardar trigger processar
+          // Aguardar um pouco mais para garantir que o trigger processe
+          setTimeout(() => {
+            checkCourseCompletion()
+            // Forçar atualização da interface
+            setIsCompleted(true)
+          }, 3000)
         }
       }
     } catch (error) {

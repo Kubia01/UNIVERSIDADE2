@@ -34,22 +34,56 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
   const [editingLessonIndex, setEditingLessonIndex] = useState<number | null>(null)
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [contentInputType, setContentInputType] = useState<'url' | 'upload'>('url')
+  const [viewMode, setViewMode] = useState<'list' | 'form'>('list') // Novo estado
 
   // Load course data if editing
   useEffect(() => {
     if (course) {
       setCourseData({
-        title: course.title,
-        description: course.description,
-        type: course.type,
-        instructor: course.instructor,
-        thumbnail: course.thumbnail || '',
-        is_mandatory: course.is_mandatory,
+        title: course.title || '',
+        description: course.description || '',
+        type: course.type || 'training',
+        instructor: course.instructor || '',
         department: course.department || 'HR',
+        thumbnail: course.thumbnail || '',
+        is_mandatory: course.is_mandatory || false,
         lessons: course.lessons || []
       })
+      
+      // Se há aulas, carregar do banco
+      if (course.id) {
+        loadExistingLessons(course.id)
+      }
     }
   }, [course])
+
+  const loadExistingLessons = async (courseId: string) => {
+    try {
+      const { data: videos, error } = await supabase
+        .from('videos')
+        .select('*')
+        .eq('course_id', courseId)
+        .order('order_index', { ascending: true })
+
+      if (error) throw error
+
+      const lessons = (videos || []).map((video: any) => ({
+        title: video.title,
+        description: video.description || '',
+        type: video.type,
+        content: video.video_url,
+        duration: video.duration || 0,
+        order_index: video.order_index
+      }))
+
+      setCourseData(prev => ({
+        ...prev,
+        lessons: lessons
+      }))
+    } catch (error) {
+      console.error('Erro ao carregar aulas existentes:', error)
+    }
+  }
 
   const courseTypes: { value: CourseType; label: string }[] = [
     { value: 'onboarding', label: 'Integração' },
@@ -398,277 +432,308 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               Aulas do Curso
             </h3>
+            
+            {/* Botões de Ação */}
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                }`}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Visualizar Aulas
+              </button>
+              <button
+                onClick={() => {
+                  setViewMode('form')
+                  handleStartNewLesson()
+                }}
+                className={`flex items-center px-4 py-2 rounded-lg transition-colors ${
+                  viewMode === 'form'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-800'
+                }`}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar Aula
+              </button>
+            </div>
           </div>
 
-          {/* Lessons List */}
-          <div className="space-y-4">
-            {courseData.lessons.map((lesson, index) => {
-              const Icon = getLessonIcon(lesson.type)
-              return (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border hover:border-blue-300 transition-colors"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                      <Icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          {/* Visualização baseada no modo */}
+          {viewMode === 'list' ? (
+            /* Lista de Aulas Existentes */
+            <div className="space-y-4">
+              {courseData.lessons.length > 0 ? (
+                courseData.lessons.map((lesson, index) => {
+                  const Icon = getLessonIcon(lesson.type)
+                  return (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border hover:border-blue-300 transition-colors"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                          <Icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {lesson.title}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {lesson.type} • {lesson.duration || 0} min
+                          </p>
+                          {lesson.description && (
+                            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                              {lesson.description}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-400 dark:text-gray-400 mt-1 truncate">
+                            {lesson.content}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => {
+                            setViewMode('form')
+                            handleEditLesson(index)
+                          }}
+                          className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                          title="Editar aula"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleRemoveLesson(index)}
+                          className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                          title="Remover aula"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {lesson.title}
-                      </p>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {lesson.type} • {lesson.duration || 0} min
-                      </p>
-                      {lesson.description && (
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                          {lesson.description}
-                        </p>
-                      )}
-                    </div>
+                  )
+                })
+              ) : (
+                <div className="text-center py-12 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+                  <div className="w-16 h-16 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-4">
+                    <Plus className="h-8 w-8 text-gray-400" />
                   </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleEditLesson(index)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
-                      title="Editar aula"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleRemoveLesson(index)}
-                      className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                      title="Remover aula"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-
-            {courseData.lessons.length === 0 && (
-              <div className="text-center py-8 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
-                <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-3">
-                  <Plus className="h-6 w-6 text-gray-400" />
-                </div>
-                <p className="text-gray-500 dark:text-gray-400 font-medium">Nenhuma aula adicionada</p>
-                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                  Clique em "Adicionar Aula" para começar a criar o conteúdo
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Add Lesson Button */}
-          <div className="flex justify-center pt-4">
-            <button
-              onClick={handleStartNewLesson}
-              className="flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-md hover:shadow-lg"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-              Adicionar Nova Aula
-            </button>
-          </div>
-
-          {/* Add Lesson Form */}
-          {showLessonForm && (
-            <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-medium text-gray-900 dark:text-white">
-                  {editingLessonIndex !== null ? 'Editar Aula' : 'Nova Aula'}
-                </h4>
-                <div className="flex space-x-2">
-                  {editingLessonIndex !== null && (
-                    <button
-                      onClick={handleCancelEdit}
-                      className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
+                  <p className="text-gray-500 dark:text-gray-400 font-medium text-lg">Nenhuma aula criada ainda</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-2 mb-4">
+                    Comece adicionando a primeira aula do seu curso
+                  </p>
                   <button
-                    onClick={() => setShowLessonForm(false)}
-                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                    onClick={() => {
+                      setViewMode('form')
+                      handleStartNewLesson()
+                    }}
+                    className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-md hover:shadow-lg"
                   >
-                    <X className="h-4 w-4" />
+                    <Plus className="h-5 w-5 mr-2" />
+                    Criar Primeira Aula
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Formulário de Adicionar/Editar Aula */
+            showLessonForm && (
+              <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-6 bg-gray-50 dark:bg-gray-700">
+                <div className="flex items-center justify-between mb-6">
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                    {editingLessonIndex !== null ? 'Editar Aula' : 'Nova Aula'}
+                  </h4>
+                  <button
+                    onClick={() => {
+                      setViewMode('list')
+                      handleCancelEdit()
+                    }}
+                    className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                {/* Resto do formulário permanece igual... */}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Título da Aula
+                    </label>
+                    <input
+                      type="text"
+                      value={currentLesson.title}
+                      onChange={(e) => setCurrentLesson({ ...currentLesson, title: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Digite o título da aula"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Tipo de Conteúdo
+                    </label>
+                    <select
+                      value={currentLesson.type}
+                      onChange={(e) => setCurrentLesson({ ...currentLesson, type: e.target.value as LessonType })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      {lessonTypes.map((type) => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Descrição
+                    </label>
+                    <input
+                      type="text"
+                      value={currentLesson.description}
+                      onChange={(e) => setCurrentLesson({ ...currentLesson, description: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Breve descrição da aula"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Duração (minutos)
+                    </label>
+                    <input
+                      type="number"
+                      value={currentLesson.duration}
+                      onChange={(e) => setCurrentLesson({ ...currentLesson, duration: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="0"
+                      min="0"
+                    />
+                  </div>
+
+                  {/* Campo de conteúdo com opções de URL ou Upload */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {currentLesson.type === 'video' ? 'Conteúdo do Vídeo' : 
+                       currentLesson.type === 'document' ? 'Documento/PDF' :
+                       currentLesson.type === 'link' ? 'URL do Link' : 'Conteúdo'}
+                    </label>
+                    
+                    {currentLesson.type === 'video' && (
+                      <div className="mb-3">
+                        <div className="flex space-x-4">
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="contentType"
+                              value="url"
+                              checked={contentInputType === 'url'}
+                              onChange={() => setContentInputType('url')}
+                              className="mr-2"
+                            />
+                            <span className="text-sm">URL do Vídeo</span>
+                          </label>
+                          <label className="flex items-center">
+                            <input
+                              type="radio"
+                              name="contentType"
+                              value="upload"
+                              checked={contentInputType === 'upload'}
+                              onChange={() => setContentInputType('upload')}
+                              className="mr-2"
+                            />
+                            <span className="text-sm">Upload do Computador</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
+
+                    {currentLesson.type === 'video' && contentInputType === 'upload' ? (
+                      <div className="space-y-3">
+                        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+                          {uploadingVideo ? (
+                            <div className="flex flex-col items-center">
+                              <div className="loading-spinner w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                              <p className="text-sm text-gray-600 dark:text-gray-400">Enviando vídeo...</p>
+                            </div>
+                          ) : (
+                            <>
+                              <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                              <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                                Clique para selecionar ou arraste um vídeo aqui
+                              </p>
+                              <p className="text-xs text-gray-500 dark:text-gray-500">
+                                MP4, WebM, OGG, AVI, MOV (máx. 100MB)
+                              </p>
+                              <input
+                                type="file"
+                                accept="video/*"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0]
+                                  if (file) handleVideoUpload(file)
+                                }}
+                                className="hidden"
+                                id="video-upload"
+                              />
+                              <label
+                                htmlFor="video-upload"
+                                className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors"
+                              >
+                                <Upload className="h-4 w-4 mr-2" />
+                                Selecionar Vídeo
+                              </label>
+                            </>
+                          )}
+                        </div>
+                        {currentLesson.content && (
+                          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                            <p className="text-sm text-green-800 dark:text-green-200">
+                              ✓ Vídeo carregado com sucesso!
+                            </p>
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-1 break-all">
+                              {currentLesson.content}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <input
+                        type="url"
+                        value={currentLesson.content}
+                        onChange={(e) => setCurrentLesson({ ...currentLesson, content: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder={currentLesson.type === 'video' && contentInputType === 'url' ? 'https://youtube.com/watch?v=... ou https://exemplo.com/video.mp4' : 'Cole a URL do conteúdo'}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex space-x-3 mt-4">
+                  <button
+                    onClick={handleCancelEdit}
+                    className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleAddLesson}
+                    disabled={uploadingVideo}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {uploadingVideo ? 'Enviando...' : editingLessonIndex !== null ? 'Atualizar Aula' : 'Adicionar Aula'}
                   </button>
                 </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Título da Aula
-                  </label>
-                  <input
-                    type="text"
-                    value={currentLesson.title}
-                    onChange={(e) => setCurrentLesson({ ...currentLesson, title: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Digite o título da aula"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Tipo de Conteúdo
-                  </label>
-                  <select
-                    value={currentLesson.type}
-                    onChange={(e) => setCurrentLesson({ ...currentLesson, type: e.target.value as LessonType })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    {lessonTypes.map((type) => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Descrição
-                  </label>
-                  <input
-                    type="text"
-                    value={currentLesson.description}
-                    onChange={(e) => setCurrentLesson({ ...currentLesson, description: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Breve descrição da aula"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Duração (minutos)
-                  </label>
-                  <input
-                    type="number"
-                    value={currentLesson.duration}
-                    onChange={(e) => setCurrentLesson({ ...currentLesson, duration: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0"
-                    min="0"
-                  />
-                </div>
-
-                {/* Campo de conteúdo com opções de URL ou Upload */}
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {currentLesson.type === 'video' ? 'Conteúdo do Vídeo' : 
-                     currentLesson.type === 'document' ? 'Documento/PDF' :
-                     currentLesson.type === 'link' ? 'URL do Link' : 'Conteúdo'}
-                  </label>
-                  
-                  {currentLesson.type === 'video' && (
-                    <div className="mb-3">
-                      <div className="flex space-x-4">
-                        <label className="flex items-center">
-                          <input
-                            type="radio"
-                            name="contentType"
-                            value="url"
-                            checked={contentInputType === 'url'}
-                            onChange={() => setContentInputType('url')}
-                            className="mr-2"
-                          />
-                          <span className="text-sm">URL do Vídeo</span>
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="radio"
-                            name="contentType"
-                            value="upload"
-                            checked={contentInputType === 'upload'}
-                            onChange={() => setContentInputType('upload')}
-                            className="mr-2"
-                          />
-                          <span className="text-sm">Upload do Computador</span>
-                        </label>
-                      </div>
-                    </div>
-                  )}
-
-                  {currentLesson.type === 'video' && contentInputType === 'upload' ? (
-                    <div className="space-y-3">
-                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
-                        {uploadingVideo ? (
-                          <div className="flex flex-col items-center">
-                            <div className="loading-spinner w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400">Enviando vídeo...</p>
-                          </div>
-                        ) : (
-                          <>
-                            <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
-                              Clique para selecionar ou arraste um vídeo aqui
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-500">
-                              MP4, WebM, OGG, AVI, MOV (máx. 100MB)
-                            </p>
-                            <input
-                              type="file"
-                              accept="video/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0]
-                                if (file) handleVideoUpload(file)
-                              }}
-                              className="hidden"
-                              id="video-upload"
-                            />
-                            <label
-                              htmlFor="video-upload"
-                              className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors"
-                            >
-                              <Upload className="h-4 w-4 mr-2" />
-                              Selecionar Vídeo
-                            </label>
-                          </>
-                        )}
-                      </div>
-                      {currentLesson.content && (
-                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
-                          <p className="text-sm text-green-800 dark:text-green-200">
-                            ✓ Vídeo carregado com sucesso!
-                          </p>
-                          <p className="text-xs text-green-600 dark:text-green-400 mt-1 break-all">
-                            {currentLesson.content}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <input
-                      type="url"
-                      value={currentLesson.content}
-                      onChange={(e) => setCurrentLesson({ ...currentLesson, content: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder={currentLesson.type === 'video' && contentInputType === 'url' ? 'https://youtube.com/watch?v=... ou https://exemplo.com/video.mp4' : 'Cole a URL do conteúdo'}
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex space-x-3 mt-4">
-                <button
-                  onClick={handleCancelEdit}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={handleAddLesson}
-                  disabled={uploadingVideo}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {uploadingVideo ? 'Enviando...' : editingLessonIndex !== null ? 'Atualizar Aula' : 'Adicionar Aula'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
         {/* Save Button */}
         <div className="flex justify-end space-x-4">
