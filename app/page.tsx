@@ -111,28 +111,36 @@ export default function HomePage() {
 
       // Se for admin, carregar lista de funcionários
       if (user?.role === 'admin') {
-  const { data: allUsers, error: usersError } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('name', { ascending: true });
+        console.log('Carregando lista de funcionários...')
+        const { data: allUsers, error: usersError } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('name', { ascending: true })
 
-  if (!usersError && allUsers) {
-    setEmployees(allUsers.map((u: any) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      department: u.department || 'HR',
-      role: u.role,
-      avatar: u.avatar || '',
-      created_at: u.created_at,
-      updated_at: u.updated_at,
-    })));
-  } else {
-    setEmployees([]);
-  }
-} else {
-  setEmployees([]);
-}
+        console.log('Resultado da consulta de usuários:', { allUsers, usersError })
+
+        if (usersError) {
+          console.error('Erro ao carregar usuários:', usersError)
+          setEmployees([])
+        } else if (allUsers) {
+          console.log('Usuários carregados com sucesso:', allUsers.length)
+          setEmployees(allUsers.map((u: any) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            department: u.department || 'HR',
+            role: u.role,
+            avatar: u.avatar || '',
+            created_at: u.created_at,
+            updated_at: u.updated_at,
+          })))
+        } else {
+          console.log('Nenhum usuário encontrado')
+          setEmployees([])
+        }
+      } else {
+        setEmployees([])
+      }
 
       // Buscar estatísticas básicas
       const { data: certificates, error: certificatesError } = await supabase
@@ -307,14 +315,27 @@ export default function HomePage() {
                     setSelectedEmployee(employee)
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={employees.length === 0}
                 >
-                  <option value="">Visão Geral (Todos)</option>
+                  <option value="">
+                    {employees.length === 0 ? 'Carregando usuários...' : 'Visão Geral (Todos)'}
+                  </option>
                   {employees.map((employee) => (
                     <option key={employee.id} value={employee.id}>
                       {employee.name} - {employee.department}
                     </option>
                   ))}
+                  {employees.length === 0 && (
+                    <option value="" disabled>
+                      Nenhum usuário encontrado
+                    </option>
+                  )}
                 </select>
+                {employees.length === 0 && (
+                  <p className="text-xs text-red-600 mt-1">
+                    ⚠️ Erro ao carregar usuários. Verifique as permissões do banco de dados.
+                  </p>
+                )}
               </div>
             </div>
           )}
