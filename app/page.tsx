@@ -61,23 +61,65 @@ export default function HomePage() {
   const checkUser = async () => {
     try {
       const currentUser = await getCurrentUser()
-      if (currentUser) {
-        const { data: profile } = await supabase
+      console.log('getCurrentUser resultado:', currentUser)
+      
+      if (currentUser && currentUser.id) {
+        console.log('Carregando perfil para usuário ID:', currentUser.id)
+        
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', currentUser.id)
           .single()
         
-        if (profile) {
+        console.log('Resultado da consulta do perfil:', { profile, profileError })
+        
+        if (profileError) {
+          console.error('Erro ao carregar perfil:', profileError)
+          
+          // Se o perfil não existe, tentar criar um básico
+          if (profileError.code === 'PGRST116') {
+            console.log('Perfil não encontrado, tentando criar...')
+            const { data: newProfile, error: createError } = await supabase
+              .from('profiles')
+              .insert([{
+                id: currentUser.id,
+                email: currentUser.email || '',
+                name: currentUser.email?.split('@')[0] || 'Usuário',
+                role: 'user',
+                department: 'HR'
+              }])
+              .select()
+              .single()
+            
+            if (createError) {
+              console.error('Erro ao criar perfil:', createError)
+              router.push('/login')
+              return
+            } else {
+              console.log('Perfil criado com sucesso:', newProfile)
+              setUser(newProfile)
+            }
+          } else {
+            router.push('/login')
+            return
+          }
+        } else if (profile) {
           console.log('Usuário carregado:', profile.name, 'role:', profile.role)
           setUser(profile)
-          // Carregar dados do dashboard imediatamente após definir o usuário
-          setTimeout(() => {
-            console.log('Iniciando carregamento dos dados do dashboard...')
-            loadDashboardData()
-          }, 500)
+        } else {
+          console.log('Perfil retornou null')
+          router.push('/login')
+          return
         }
+        
+        // Carregar dados do dashboard após definir o usuário
+        setTimeout(() => {
+          console.log('Iniciando carregamento dos dados do dashboard...')
+          loadDashboardData()
+        }, 500)
       } else {
+        console.log('getCurrentUser retornou null ou sem ID')
         router.push('/login')
       }
     } catch (error) {
@@ -89,10 +131,13 @@ export default function HomePage() {
   }
 
   const loadDashboardData = async () => {
-    if (!user) return
+    if (!user || !user.id) {
+      console.log('loadDashboardData: usuário não definido ou sem ID')
+      return
+    }
 
     try {
-      console.log('Carregando dados do dashboard para usuário:', user.email, 'role:', user.role)
+      console.log('Carregando dados do dashboard para usuário:', user.email, 'role:', user.role, 'id:', user.id)
       
       // Buscar cursos disponíveis
       const { data: courses, error: coursesError } = await supabase
