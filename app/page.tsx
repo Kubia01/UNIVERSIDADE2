@@ -35,6 +35,8 @@ export default function HomePage() {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [showCourseModule, setShowCourseModule] = useState(false)
+  const [selectedEmployee, setSelectedEmployee] = useState<User | null>(null)
+  const [employees, setEmployees] = useState<User[]>([])
   const [stats, setStats] = useState<DashboardStats>({
     totalCourses: 0,
     completedCourses: 0,
@@ -114,6 +116,11 @@ export default function HomePage() {
         .from('profiles')
         .select('*')
       if (usersError) throw usersError
+
+      // Se for admin, carregar lista de funcionários
+      if (user?.role === 'admin') {
+        setEmployees(users || [])
+      }
 
       const { data: certificates, error: certificatesError } = await supabase
         .from('certificates')
@@ -250,12 +257,51 @@ export default function HomePage() {
     <div className="p-6 space-y-8">
       {/* Welcome Section */}
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
-          Bem-vindo à sua jornada de aprendizado!
-        </h2>
-        <p className="text-gray-600">
-          Continue desenvolvendo suas habilidades com nossos cursos de treinamento.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              {selectedEmployee 
+                ? `Dashboard de ${selectedEmployee.name}`
+                : `Bem-vindo${user?.role === 'admin' ? ' ao painel administrativo' : ' à sua jornada de aprendizado'}!`
+              }
+            </h2>
+            <p className="text-gray-600">
+              {selectedEmployee 
+                ? `Acompanhe o progresso de ${selectedEmployee.name} nos treinamentos`
+                : user?.role === 'admin'
+                ? 'Gerencie a plataforma e acompanhe o progresso dos colaboradores.'
+                : 'Continue desenvolvendo suas habilidades com nossos cursos de treinamento.'
+              }
+            </p>
+          </div>
+          
+          {/* Filtro de Colaboradores para Admins */}
+          {user?.role === 'admin' && (
+            <div className="flex items-center space-x-4">
+              <div className="min-w-64">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Filtrar por colaborador:
+                </label>
+                <select
+                  value={selectedEmployee?.id || ''}
+                  onChange={(e) => {
+                    const employeeId = e.target.value
+                    const employee = employees.find(emp => emp.id === employeeId) || null
+                    setSelectedEmployee(employee)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Visão Geral (Todos)</option>
+                  {employees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name} - {employee.department}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -264,7 +310,9 @@ export default function HomePage() {
           <div className="flex items-center">
             <BookOpen className="h-8 w-8 text-primary-600" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Cursos Disponíveis</p>
+              <p className="text-sm font-medium text-gray-600">
+                {selectedEmployee ? 'Cursos Acessíveis' : 'Cursos Disponíveis'}
+              </p>
               <p className="text-2xl font-bold text-gray-900">{stats.totalCourses}</p>
             </div>
           </div>
@@ -294,17 +342,71 @@ export default function HomePage() {
           <div className="flex items-center">
             <Star className="h-8 w-8 text-yellow-600" />
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Certificados</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.certificatesEarned}</p>
+              <p className="text-sm font-medium text-gray-600">
+                {selectedEmployee ? 'Certificados' : user?.role === 'admin' ? 'Total de Usuários' : 'Certificados'}
+              </p>
+              <p className="text-2xl font-bold text-gray-900">
+                {selectedEmployee ? stats.certificatesEarned : user?.role === 'admin' ? stats.totalUsers : stats.certificatesEarned}
+              </p>
             </div>
           </div>
         </div>
       </div>
 
+      {/* Informações específicas do colaborador selecionado */}
+      {selectedEmployee && user?.role === 'admin' && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-8">
+          <div className="flex items-start space-x-4">
+            {selectedEmployee.avatar ? (
+              <img
+                src={selectedEmployee.avatar}
+                alt={selectedEmployee.name}
+                className="w-16 h-16 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-xl">
+                  {selectedEmployee.name.charAt(0)}
+                </span>
+              </div>
+            )}
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-blue-900">
+                {selectedEmployee.name}
+              </h3>
+              <div className="grid grid-cols-2 gap-4 mt-2 text-sm">
+                <div>
+                  <span className="font-medium text-blue-800">Email:</span>
+                  <span className="ml-2 text-blue-700">{selectedEmployee.email}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-blue-800">Departamento:</span>
+                  <span className="ml-2 text-blue-700">{selectedEmployee.department}</span>
+                </div>
+                <div>
+                  <span className="font-medium text-blue-800">Perfil:</span>
+                  <span className="ml-2 text-blue-700">
+                    {selectedEmployee.role === 'admin' ? 'Administrador' : 'Colaborador'}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-medium text-blue-800">Cadastrado em:</span>
+                  <span className="ml-2 text-blue-700">
+                    {new Date(selectedEmployee.created_at).toLocaleDateString('pt-BR')}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Recent Courses */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Cursos Disponíveis</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {selectedEmployee ? `Cursos para ${selectedEmployee.name}` : 'Cursos Disponíveis'}
+          </h3>
           <button
             onClick={() => setActiveView('courses')}
             className="text-primary-600 hover:text-primary-700 font-medium"
@@ -335,23 +437,29 @@ export default function HomePage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="card">
-          <h4 className="font-semibold text-gray-900 mb-4">Ações Rápidas</h4>
+          <h4 className="font-semibold text-gray-900 mb-4">
+            {selectedEmployee ? `Ações para ${selectedEmployee.name}` : 'Ações Rápidas'}
+          </h4>
           <div className="space-y-3">
             <button
               onClick={() => setActiveView('courses')}
               className="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors w-full text-left"
             >
               <BookOpen className="h-5 w-5 text-primary-600 mr-3" />
-              <span className="text-sm font-medium">Explorar Cursos</span>
+              <span className="text-sm font-medium">
+                {selectedEmployee ? 'Ver Cursos Disponíveis' : 'Explorar Cursos'}
+              </span>
             </button>
             <button
               onClick={() => setActiveView('certificates')}
               className="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors w-full text-left"
             >
               <Trophy className="h-5 w-5 text-primary-600 mr-3" />
-              <span className="text-sm font-medium">Meus Certificados</span>
+              <span className="text-sm font-medium">
+                {selectedEmployee ? 'Certificados do Colaborador' : 'Meus Certificados'}
+              </span>
             </button>
-            {user?.role === 'admin' && (
+            {user?.role === 'admin' && !selectedEmployee && (
               <button
                 onClick={() => setActiveView('users')}
                 className="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors w-full text-left"
@@ -364,12 +472,17 @@ export default function HomePage() {
         </div>
 
         <div className="card">
-          <h4 className="font-semibold text-gray-900 mb-4">Progresso Recente</h4>
+          <h4 className="font-semibold text-gray-900 mb-4">
+            {selectedEmployee ? 'Progresso Recente' : 'Progresso Recente'}
+          </h4>
           <div className="space-y-3">
             <div className="text-center py-8">
               <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
               <p className="text-sm text-gray-500">
-                Comece a assistir cursos para ver seu progresso aqui
+                {selectedEmployee 
+                  ? `${selectedEmployee.name} ainda não iniciou nenhum curso`
+                  : 'Comece a assistir cursos para ver seu progresso aqui'
+                }
               </p>
             </div>
           </div>
