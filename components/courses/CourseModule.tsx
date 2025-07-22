@@ -15,11 +15,67 @@ const CourseModule: React.FC<CourseModuleProps> = ({ course, user, onBack, onLes
   const [lessons, setLessons] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [userProgress, setUserProgress] = useState<{[key: string]: boolean}>({})
+  const [courseCompleted, setCourseCompleted] = useState(false)
 
   useEffect(() => {
     loadLessons()
     loadUserProgress()
   }, [course.id])
+
+  useEffect(() => {
+    // Verifica se todas as aulas foram concluídas
+    if (lessons.length > 0 && Object.keys(userProgress).length === lessons.length) {
+      const allCompleted = lessons.every(lesson => userProgress[lesson.id])
+      if (allCompleted && !courseCompleted) {
+        setCourseCompleted(true)
+        updateCourseProgressAndCertificate()
+      }
+    }
+  }, [userProgress, lessons])
+
+  const updateCourseProgressAndCertificate = async () => {
+    try {
+      // Atualiza o progresso do curso para 100%
+      const { error: progressError } = await supabase
+        .from('user_progress')
+        .upsert({
+          user_id: user.id,
+          course_id: course.id,
+          progress: 100,
+          completed_lessons: lessons.map(l => l.id),
+          completed_at: new Date().toISOString(),
+        }, { onConflict: 'user_id,course_id' })
+      if (!progressError) {
+        // Verifica se já existe certificado
+        const { data: existingCertificate, error: certError } = await supabase
+          .from('certificates')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('course_id', course.id)
+          .single()
+        if (certError && certError.code === 'PGRST116') {
+          await generateCertificate()
+        }
+      }
+    } catch {}
+  }
+
+  const generateCertificate = async () => {
+    try {
+      const certificateUrl = `${window.location.origin}/certificate/${course.id}/${user.id}`
+      const { error } = await supabase
+        .from('certificates')
+        .insert([{
+          user_id: user.id,
+          course_id: course.id,
+          certificate_url: certificateUrl,
+          issued_at: new Date().toISOString()
+        }])
+      if (!error) {
+        alert(`🎉 Parabéns! Você concluiu o curso "${course.title}" e ganhou um certificado!`)
+      }
+    } catch {}
+  }
 
   const loadLessons = async () => {
     try {
@@ -47,7 +103,7 @@ const CourseModule: React.FC<CourseModuleProps> = ({ course, user, onBack, onLes
 
       setLessons(courseLessons)
     } catch (error) {
-      console.error('Erro ao carregar aulas:', error)
+      // Apenas log crítico se necessário
     } finally {
       setLoading(false)
     }
@@ -59,7 +115,7 @@ const CourseModule: React.FC<CourseModuleProps> = ({ course, user, onBack, onLes
       // Por enquanto, vamos deixar vazio
       setUserProgress({})
     } catch (error) {
-      console.error('Erro ao carregar progresso:', error)
+      // Apenas log crítico se necessário
     }
   }
 
