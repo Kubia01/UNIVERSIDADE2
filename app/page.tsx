@@ -303,23 +303,8 @@ export default function HomePage() {
         setEmployees([])
       }
 
-      // Buscar estatísticas básicas
-      const { data: certificates, error: certificatesError } = await supabase
-        .from('certificates')
-        .select('*')
-      
-      if (certificatesError) {
-        console.error('Erro ao carregar certificados:', certificatesError)
-      }
-
-      // Calcular estatísticas simples
-      setStats({
-        totalCourses: courses?.length || 0,
-        completedCourses: 0,
-        totalWatchTime: 0,
-        certificatesEarned: certificates?.length || 0,
-        totalUsers: currentUser?.role === 'admin' ? (employees.length || 0) : 0
-      })
+      // Calcular estatísticas específicas do usuário
+      await calculateUserStats(currentUser, courses)
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     }
