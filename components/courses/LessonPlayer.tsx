@@ -117,15 +117,60 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
 
   const checkCourseCompletion = async () => {
     try {
-      // Verificar se o curso foi 100% concluído
-      const { data: courseProgress, error } = await supabase
-        .from('user_progress')
+      console.log('Verificando conclusão do curso...')
+      
+      // Verificar quantas aulas o curso tem
+      const totalLessons = course.lessons?.length || 0
+      console.log('Total de aulas no curso:', totalLessons)
+      
+      if (totalLessons === 0) {
+        console.log('Curso não tem aulas, não pode ser concluído')
+        return
+      }
+      
+      // Verificar quantas aulas o usuário concluiu
+      const { data: completedLessons, error: lessonsError } = await supabase
+        .from('lesson_progress')
         .select('*')
         .eq('user_id', user.id)
         .eq('course_id', course.id)
-        .single()
-
-      if (!error && courseProgress && courseProgress.progress >= 100) {
+        .not('completed_at', 'is', null)
+      
+      if (lessonsError) {
+        console.error('Erro ao verificar aulas concluídas:', lessonsError)
+        return
+      }
+      
+      const completedCount = completedLessons?.length || 0
+      const progressPercentage = Math.round((completedCount / totalLessons) * 100)
+      
+      console.log(`Progresso do curso: ${completedCount}/${totalLessons} aulas (${progressPercentage}%)`)
+      
+      // Atualizar ou criar registro na user_progress
+      const { data: userProgress, error: upsertError } = await supabase
+        .from('user_progress')
+        .upsert({
+          user_id: user.id,
+          course_id: course.id,
+          progress: progressPercentage,
+          completed_lessons: completedLessons?.map(l => l.lesson_id) || [],
+          completed_at: progressPercentage >= 100 ? new Date().toISOString() : null
+        }, {
+          onConflict: 'user_id,course_id'
+        })
+        .select()
+      
+      if (upsertError) {
+        console.error('Erro ao atualizar progresso do curso:', upsertError)
+        return
+      }
+      
+      console.log('Progresso do curso atualizado:', userProgress)
+      
+      // Se curso foi 100% concluído, gerar certificado
+      if (progressPercentage >= 100) {
+        console.log('Curso 100% concluído! Verificando certificado...')
+        
         // Verificar se já existe certificado
         const { data: existingCertificate, error: certError } = await supabase
           .from('certificates')
@@ -135,8 +180,10 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
           .single()
 
         if (certError && certError.code === 'PGRST116') {
-          // Não existe certificado, criar um novo
+          console.log('Certificado não existe, criando...')
           await generateCertificate()
+        } else if (existingCertificate) {
+          console.log('Certificado já existe:', existingCertificate)
         }
       }
     } catch (error) {
