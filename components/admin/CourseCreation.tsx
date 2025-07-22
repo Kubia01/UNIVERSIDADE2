@@ -191,6 +191,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
     })
     setShowLessonForm(false)
     setEditingLessonIndex(null)
+    setContentInputType('url') // Reset do tipo de input
   }
 
   const handleRemoveLesson = (index: number) => {
@@ -228,6 +229,19 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
 
     console.log('Salvando curso com aulas:', newCourse)
     onSave(newCourse)
+  }
+
+  const handleStartNewLesson = () => {
+    setCurrentLesson({
+      title: '',
+      description: '',
+      type: 'video',
+      content: '',
+      duration: 0
+    })
+    setEditingLessonIndex(null)
+    setContentInputType('url')
+    setShowLessonForm(true)
   }
 
   const getLessonIcon = (type: string) => {
@@ -385,7 +399,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
               Aulas do Curso
             </h3>
             <button
-              onClick={() => setShowLessonForm(true)}
+              onClick={handleStartNewLesson}
               className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             >
               <Plus className="h-4 w-4 mr-2" />

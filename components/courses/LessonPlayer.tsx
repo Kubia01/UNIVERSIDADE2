@@ -86,9 +86,71 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
           completed,
           progress: completed ? 100 : Math.min((currentTime / duration) * 100, 95)
         })
+
+        // Se a aula foi concluída, verificar se o curso foi completado
+        if (completed) {
+          await checkCourseCompletion()
+        }
       }
     } catch (error) {
       console.error('Erro inesperado ao salvar progresso:', error)
+    }
+  }
+
+  const checkCourseCompletion = async () => {
+    try {
+      // Verificar se o curso foi 100% concluído
+      const { data: courseProgress, error } = await supabase
+        .from('user_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('course_id', course.id)
+        .single()
+
+      if (!error && courseProgress && courseProgress.progress >= 100) {
+        // Verificar se já existe certificado
+        const { data: existingCertificate, error: certError } = await supabase
+          .from('certificates')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('course_id', course.id)
+          .single()
+
+        if (certError && certError.code === 'PGRST116') {
+          // Não existe certificado, criar um novo
+          await generateCertificate()
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao verificar conclusão do curso:', error)
+    }
+  }
+
+  const generateCertificate = async () => {
+    try {
+      // Gerar URL do certificado (pode ser uma página específica ou PDF)
+      const certificateUrl = `${window.location.origin}/certificate/${course.id}/${user.id}`
+      
+      const { data, error } = await supabase
+        .from('certificates')
+        .insert([{
+          user_id: user.id,
+          course_id: course.id,
+          certificate_url: certificateUrl,
+          issued_at: new Date().toISOString()
+        }])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Erro ao gerar certificado:', error)
+      } else {
+        console.log('Certificado gerado com sucesso:', data)
+        // Mostrar notificação de certificado gerado
+        alert(`🎉 Parabéns! Você concluiu o curso "${course.title}" e ganhou um certificado!`)
+      }
+    } catch (error) {
+      console.error('Erro inesperado ao gerar certificado:', error)
     }
   }
 
