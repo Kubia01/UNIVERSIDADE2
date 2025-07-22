@@ -34,7 +34,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
   const [editingLessonIndex, setEditingLessonIndex] = useState<number | null>(null)
   const [uploadingVideo, setUploadingVideo] = useState(false)
   const [contentInputType, setContentInputType] = useState<'url' | 'upload'>('url')
-  const [viewMode, setViewMode] = useState<'list' | 'form'>('list') // Novo estado
+  const [viewMode, setViewMode] = useState<'list' | 'form'>('list')
 
   // Load course data if editing
   useEffect(() => {
@@ -93,10 +93,20 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
     { value: 'leadership', label: 'Liderança' }
   ]
 
-  const lessonTypes = [
+  const departments = [
+    { value: 'HR', label: 'Recursos Humanos' },
+    { value: 'IT', label: 'Tecnologia da Informação' },
+    { value: 'Finance', label: 'Financeiro' },
+    { value: 'Sales', label: 'Vendas' },
+    { value: 'Marketing', label: 'Marketing' },
+    { value: 'Operations', label: 'Operações' },
+    { value: 'Legal', label: 'Jurídico' }
+  ]
+
+  const lessonTypes: { value: LessonType; label: string; icon: any }[] = [
     { value: 'video', label: 'Vídeo', icon: Video },
-    { value: 'document', label: 'Documento/PDF', icon: FileText },
-    { value: 'quiz', label: 'Quiz/Avaliação', icon: HelpCircle },
+    { value: 'document', label: 'Documento', icon: FileText },
+    { value: 'quiz', label: 'Quiz', icon: HelpCircle },
     { value: 'link', label: 'Link Externo', icon: Link }
   ]
 
@@ -225,7 +235,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
     })
     setShowLessonForm(false)
     setEditingLessonIndex(null)
-    setContentInputType('url') // Reset do tipo de input
+    setContentInputType('url')
   }
 
   const handleRemoveLesson = (index: number) => {
@@ -298,53 +308,51 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
             {course ? 'Editar Curso' : 'Criar Novo Curso'}
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Configure as informações básicas e adicione o conteúdo
+            {course ? 'Modifique os dados do curso' : 'Preencha as informações básicas do curso'}
           </p>
         </div>
       </div>
 
       <div className="space-y-8">
-        {/* Course Basic Info */}
+        {/* Basic Information */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Informações Básicas
-          </h3>
-
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Informações Básicas</h2>
+          
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Título do Curso *
               </label>
               <input
                 type="text"
                 value={courseData.title}
                 onChange={(e) => setCourseData({ ...courseData, title: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Digite o título do curso"
               />
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Descrição *
               </label>
               <textarea
                 value={courseData.description}
                 onChange={(e) => setCourseData({ ...courseData, description: e.target.value })}
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows={4}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Descreva o conteúdo e objetivos do curso"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Tipo do Curso *
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Tipo de Curso
               </label>
               <select
                 value={courseData.type}
                 onChange={(e) => setCourseData({ ...courseData, type: e.target.value as CourseType })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 {courseTypes.map((type) => (
                   <option key={type.value} value={type.value}>
@@ -355,73 +363,72 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Departamento
+              </label>
+              <select
+                value={courseData.department}
+                onChange={(e) => setCourseData({ ...courseData, department: e.target.value })}
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                {departments.map((dept) => (
+                  <option key={dept.value} value={dept.value}>
+                    {dept.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Instrutor *
               </label>
               <input
                 type="text"
                 value={courseData.instructor}
                 onChange={(e) => setCourseData({ ...courseData, instructor: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Nome do instrutor"
               />
             </div>
 
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Imagem de Capa
-              </label>
-              <div className="flex items-center space-x-4">
-                {courseData.thumbnail && (
-                  <img
-                    src={courseData.thumbnail}
-                    alt="Preview"
-                    className="w-20 h-20 object-cover rounded-lg"
-                  />
-                )}
-                <label className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Escolher Imagem
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleThumbnailUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="flex items-center">
+            <div>
+              <label className="flex items-center space-x-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={courseData.is_mandatory}
                   onChange={(e) => setCourseData({ ...courseData, is_mandatory: e.target.checked })}
-                  className="mr-2"
+                  className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Curso obrigatório
                 </span>
               </label>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Departamento *
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Thumbnail do Curso
               </label>
-              <select
-                value={courseData.department}
-                onChange={(e) => setCourseData({ ...courseData, department: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="HR">Recursos Humanos</option>
-                <option value="Operations">Operações</option>
-                <option value="Sales">Vendas</option>
-                <option value="Engineering">Engenharia</option>
-                <option value="Finance">Financeiro</option>
-                <option value="Marketing">Marketing</option>
-              </select>
+              <div className="flex items-center space-x-4">
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleThumbnailUpload}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                {courseData.thumbnail && (
+                  <div className="w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                    <img 
+                      src={courseData.thumbnail} 
+                      alt="Thumbnail" 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -559,8 +566,6 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
                   </button>
                 </div>
                 
-                {/* Resto do formulário permanece igual... */}
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -732,22 +737,23 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
                   </button>
                 </div>
               </div>
-            )}
-          </div>
+            )
+          )}
+        </div>
 
         {/* Save Button */}
         <div className="flex justify-end space-x-4">
           <button
             onClick={onBack}
-            className="px-6 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           >
             Cancelar
           </button>
           <button
             onClick={handleSaveCourse}
-            className="flex items-center px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            className="flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-md hover:shadow-lg"
           >
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="h-5 w-5 mr-2" />
             {course ? 'Atualizar Curso' : 'Salvar Curso'}
           </button>
         </div>
