@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Search, BookOpen, Play, Clock, Award, Filter, ChevronRight } from 'lucide-react'
+import { Search, BookOpen, Play, Clock, Award, Filter, ChevronRight, Users, Building } from 'lucide-react'
 import { supabase, Course, Department, CourseType, User } from '@/lib/supabase'
 
 interface CourseViewerProps {
@@ -141,10 +141,10 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Cursos e Treinamentos
+            Módulos de Treinamento
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Explore os cursos disponíveis para seu desenvolvimento
+            Explore os módulos de treinamento disponíveis e acesse suas aulas
           </p>
         </div>
         <button
@@ -162,7 +162,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
           <input
             type="text"
-            placeholder="Buscar cursos..."
+            placeholder="Buscar módulos de treinamento..."
             className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -197,111 +197,133 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
         )}
       </div>
 
-      {/* Courses Grid */}
+      {/* Modules Grid */}
       {filteredCourses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((course) => {
-            console.log('[CourseViewer] Renderizando card do curso:', course)
+            console.log('[CourseViewer] Renderizando card do módulo:', course)
+            const lessonCount = courseLessons[course.id]?.length || 0
             return (
-              <div key={course.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer">
-                {/* Course Thumbnail */}
-                <div className="aspect-w-16 aspect-h-9 bg-gray-200 dark:bg-gray-700 relative">
+              <div key={course.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-300 group">
+                {/* Module Thumbnail */}
+                <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 h-48">
                   {course.thumbnail ? (
                     <img
                       src={course.thumbnail}
                       alt={course.title}
-                      className="w-full h-48 object-cover"
+                      className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-48 flex items-center justify-center">
-                      <BookOpen className="h-16 w-16 text-gray-400" />
+                    <div className="w-full h-full flex items-center justify-center">
+                      <BookOpen className="h-16 w-16 text-white/80" />
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center">
-                    <Play className="h-12 w-12 text-white opacity-0 hover:opacity-100 transition-opacity" />
+                  
+                  {/* Overlay com informações */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent">
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <div className="flex items-center justify-between text-white">
+                        <span className="text-sm font-medium">
+                          {lessonCount} {lessonCount === 1 ? 'aula' : 'aulas'}
+                        </span>
+                        <div className="flex items-center text-sm">
+                          <Clock className="h-4 w-4 mr-1" />
+                          {Math.floor(course.duration / 60)}h {course.duration % 60}min
+                        </div>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Badge obrigatório */}
                   {course.is_mandatory && (
-                    <div className="absolute top-2 left-2">
-                      <span className="px-2 py-1 bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300 rounded-full text-xs font-medium">
+                    <div className="absolute top-3 left-3">
+                      <span className="px-2 py-1 bg-orange-500 text-white rounded-full text-xs font-medium">
                         Obrigatório
                       </span>
                     </div>
                   )}
-                </div>
 
-                {/* Course Info */}
-                <div className="p-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2">
-                      {course.title}
-                    </h3>
-                  </div>
-
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                    {course.description}
-                  </p>
-
-                  <div className="flex items-center justify-between mb-3">
+                  {/* Badge do tipo */}
+                  <div className="absolute top-3 right-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getTypeColor(course.type)}`}>
                       {getTypeLabel(course.type)}
                     </span>
-                    <div className="flex items-center text-sm text-gray-500">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {Math.floor(course.duration / 60)}h {course.duration % 60}min
-                    </div>
+                  </div>
+                </div>
+
+                {/* Module Info */}
+                <div className="p-6">
+                  <div className="mb-4">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-blue-600 transition-colors">
+                      {course.title}
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
+                      {course.description}
+                    </p>
                   </div>
 
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    <p className="flex items-center">
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                      <Users className="h-4 w-4 mr-2 text-blue-500" />
                       <span className="font-medium">Instrutor:</span>
                       <span className="ml-1">{course.instructor}</span>
-                    </p>
-                    <p className="flex items-center mt-1">
+                    </div>
+                    
+                    <div className="flex items-center text-sm text-gray-600 dark:text-gray-400">
+                      <Building className="h-4 w-4 mr-2 text-green-500" />
                       <span className="font-medium">Departamento:</span>
                       <span className="ml-1">{course.department}</span>
-                    </p>
+                    </div>
                   </div>
 
-                  {/* Progress Bar (placeholder) */}
-                  <div className="mb-4">
-                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                      <span>Progresso</span>
+                  {/* Progress Bar */}
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
+                      <span className="font-medium">Seu Progresso</span>
                       <span>0%</span>
                     </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: '0%' }}></div>
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                      <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" style={{ width: '0%' }}></div>
                     </div>
                   </div>
 
-                  {/* Action Button */}
-                  <div className="space-y-2">
-                    <button
-                      onClick={() => {
-                        console.log('[CourseViewer] Botão Acessar Módulo clicado para:', course)
-                        console.log('[CourseViewer] Aulas do curso:', courseLessons[course.id])
-                        if (typeof onCourseSelect === 'function') {
-                          // Adicionar as aulas ao curso antes de passar para o callback
-                          const courseWithLessons = {
-                            ...course,
-                            lessons: courseLessons[course.id] || []
+                  {/* Action Buttons */}
+                  <div className="space-y-3">
+                    {lessonCount > 0 ? (
+                      <button
+                        onClick={() => {
+                          console.log('[CourseViewer] Botão Assistir Aulas clicado para módulo:', course)
+                          console.log('[CourseViewer] Aulas do módulo:', courseLessons[course.id])
+                          if (typeof onCourseSelect === 'function') {
+                            const courseWithLessons = {
+                              ...course,
+                              lessons: courseLessons[course.id] || []
+                            }
+                            onCourseSelect(courseWithLessons)
+                          } else {
+                            console.error('[CourseViewer] onCourseSelect não é uma função!', onCourseSelect)
                           }
-                          onCourseSelect(courseWithLessons)
-                        } else {
-                          console.error('[CourseViewer] onCourseSelect não é uma função!', onCourseSelect)
-                        }
-                      }}
-                      className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium"
-                    >
-                      <BookOpen className="h-5 w-5 mr-2" />
-                      Acessar Módulo
-                      <ChevronRight className="h-4 w-4 ml-2" />
-                    </button>
+                        }}
+                        className="w-full flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-lg transition-all duration-300 font-semibold text-base shadow-md hover:shadow-lg transform hover:scale-105"
+                      >
+                        <Play className="h-5 w-5 mr-2" />
+                        Assistir Aulas
+                        <ChevronRight className="h-5 w-5 ml-2" />
+                      </button>
+                    ) : (
+                      <div className="w-full flex items-center justify-center px-6 py-3 bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-lg">
+                        <BookOpen className="h-5 w-5 mr-2" />
+                        Nenhuma aula disponível
+                      </div>
+                    )}
                     
-                    {/* Informação sobre aulas */}
-                    <div className="text-center">
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {courseLessons[course.id]?.length || 0} aulas disponíveis
-                      </span>
+                    {/* Info adicional */}
+                    <div className="text-center text-xs text-gray-500 dark:text-gray-400">
+                      {lessonCount > 0 ? (
+                        <span>✓ {lessonCount} {lessonCount === 1 ? 'aula pronta' : 'aulas prontas'} para assistir</span>
+                      ) : (
+                        <span>⚠️ Este módulo ainda não possui aulas</span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -310,47 +332,55 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
           })}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">
+        <div className="text-center py-16">
+          <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             {searchTerm || selectedDepartment !== 'All' || selectedType !== 'All'
-              ? 'Nenhum curso encontrado com os filtros aplicados.'
-              : 'Nenhum curso disponível no momento.'}
-          </p>
-          <p className="text-sm text-gray-400 mt-2">
-            Novos cursos serão adicionados em breve!
+              ? 'Nenhum módulo encontrado'
+              : 'Nenhum módulo disponível'}
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400">
+            {searchTerm || selectedDepartment !== 'All' || selectedType !== 'All'
+              ? 'Tente ajustar os filtros para encontrar módulos.'
+              : 'Novos módulos de treinamento serão adicionados em breve!'}
           </p>
         </div>
       )}
 
-      {/* Course Statistics */}
+      {/* Module Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 rounded-xl p-6 border border-blue-200 dark:border-blue-700">
           <div className="flex items-center">
-            <BookOpen className="h-8 w-8 text-blue-600" />
+            <div className="p-3 bg-blue-500 rounded-lg">
+              <BookOpen className="h-6 w-6 text-white" />
+            </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Cursos Disponíveis</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">{filteredCourses.length}</p>
+              <p className="text-sm font-medium text-blue-700 dark:text-blue-300">Módulos Disponíveis</p>
+              <p className="text-2xl font-bold text-blue-900 dark:text-white">{filteredCourses.length}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+        <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 rounded-xl p-6 border border-green-200 dark:border-green-700">
           <div className="flex items-center">
-            <Award className="h-8 w-8 text-green-600" />
+            <div className="p-3 bg-green-500 rounded-lg">
+              <Award className="h-6 w-6 text-white" />
+            </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Cursos Concluídos</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">0</p>
+              <p className="text-sm font-medium text-green-700 dark:text-green-300">Módulos Concluídos</p>
+              <p className="text-2xl font-bold text-green-900 dark:text-white">0</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800 rounded-xl p-6 border border-purple-200 dark:border-purple-700">
           <div className="flex items-center">
-            <Clock className="h-8 w-8 text-purple-600" />
+            <div className="p-3 bg-purple-500 rounded-lg">
+              <Clock className="h-6 w-6 text-white" />
+            </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Tempo de Estudo</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">0h</p>
+              <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Tempo de Estudo</p>
+              <p className="text-2xl font-bold text-purple-900 dark:text-white">0h</p>
             </div>
           </div>
         </div>
