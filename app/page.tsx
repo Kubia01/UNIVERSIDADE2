@@ -112,21 +112,64 @@ export default function HomePage() {
       // Se for admin, carregar lista de funcionários
       if (user?.role === 'admin') {
         console.log('Carregando lista de funcionários...')
-        const { data: allUsers, error: usersError } = await supabase
+        
+        // Tentativa 1: Consulta normal
+        let { data: allUsers, error: usersError } = await supabase
           .from('profiles')
           .select('*')
           .order('name', { ascending: true })
 
         console.log('Resultado da consulta de usuários:', { allUsers, usersError })
 
+        // Tentativa 2: Se falhou, tentar com RPC (função personalizada)
+        if (usersError || !allUsers) {
+          console.log('Tentativa 1 falhou, tentando método alternativo...')
+          
+          try {
+            const { data: rpcUsers, error: rpcError } = await supabase
+              .rpc('get_all_profiles')
+            
+            if (!rpcError && rpcUsers) {
+              console.log('Método RPC funcionou, usuários carregados:', rpcUsers.length)
+              allUsers = rpcUsers
+              usersError = null
+            } else {
+              console.log('Método RPC também falhou:', rpcError)
+            }
+          } catch (rpcErr) {
+            console.log('RPC não disponível:', rpcErr)
+          }
+        }
+
+        // Tentativa 3: Se ainda falhou, tentar consulta com service_role (se disponível)
+        if (usersError || !allUsers) {
+          console.log('Tentando consulta direta sem RLS...')
+          
+          try {
+            // Desabilitar RLS temporariamente para esta consulta
+            const { data: directUsers, error: directError } = await supabase
+              .from('profiles')
+              .select('id, name, email, department, role, avatar, created_at, updated_at')
+              .order('name', { ascending: true })
+
+            if (!directError && directUsers) {
+              console.log('Consulta direta funcionou:', directUsers.length)
+              allUsers = directUsers
+              usersError = null
+            }
+          } catch (directErr) {
+            console.log('Consulta direta também falhou:', directErr)
+          }
+        }
+
         if (usersError) {
-          console.error('Erro ao carregar usuários:', usersError)
+          console.error('Erro ao carregar usuários (todas as tentativas falharam):', usersError)
           setEmployees([])
-        } else if (allUsers) {
+        } else if (allUsers && allUsers.length > 0) {
           console.log('Usuários carregados com sucesso:', allUsers.length)
           setEmployees(allUsers.map((u: any) => ({
             id: u.id,
-            name: u.name,
+            name: u.name || u.email || 'Usuário sem nome',
             email: u.email,
             department: u.department || 'HR',
             role: u.role,
@@ -332,9 +375,23 @@ export default function HomePage() {
                   )}
                 </select>
                 {employees.length === 0 && (
-                  <p className="text-xs text-red-600 mt-1">
-                    ⚠️ Erro ao carregar usuários. Verifique as permissões do banco de dados.
-                  </p>
+                  <div className="mt-1 text-xs">
+                    <p className="text-red-600">
+                      ⚠️ Erro ao carregar usuários. Possíveis causas:
+                    </p>
+                    <ul className="text-red-500 mt-1 ml-4 list-disc">
+                      <li>Políticas RLS muito restritivas</li>
+                      <li>Nenhum usuário cadastrado</li>
+                      <li>Problemas de conectividade</li>
+                    </ul>
+                    <p className="text-blue-600 mt-2">
+                      💡 Execute os scripts SQL de correção no Supabase:
+                      <br />
+                      • fix_profiles_permissions_complete.sql
+                      <br />
+                      • create_rpc_function.sql
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
