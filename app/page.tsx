@@ -54,9 +54,9 @@ export default function HomePage() {
   // Recarregar dados quando funcionário selecionado mudar
   useEffect(() => {
     if (user && user.role === 'admin') {
-      loadDashboardData()
+      loadDashboardData(user)
     }
-  }, [selectedEmployee])
+  }, [selectedEmployee, user])
 
   const checkUser = async () => {
     try {
@@ -102,6 +102,12 @@ export default function HomePage() {
             } else {
               console.log('Perfil criado com sucesso:', newProfile)
               setUser(newProfile)
+              // Carregar dados do dashboard para o perfil recém-criado
+              setTimeout(() => {
+                console.log('Carregando dados para perfil recém-criado...')
+                loadDashboardData(newProfile)
+              }, 500)
+              return // Evitar chamar loadDashboardData novamente abaixo
             }
           } else {
             router.push('/login')
@@ -119,7 +125,7 @@ export default function HomePage() {
         // Carregar dados do dashboard após definir o usuário
         setTimeout(() => {
           console.log('Iniciando carregamento dos dados do dashboard...')
-          loadDashboardData()
+          loadDashboardData(profile) // Passando o profile diretamente
         }, 500)
       } else {
         console.log('getCurrentUser retornou null ou sem ID')
@@ -133,14 +139,15 @@ export default function HomePage() {
     }
   }
 
-  const loadDashboardData = async () => {
-    if (!user || !user.id) {
-      console.log('loadDashboardData: usuário não definido ou sem ID')
+  const loadDashboardData = async (userProfile?: User) => {
+    const currentUser = userProfile || user
+    if (!currentUser || !currentUser.id) {
+      console.log('loadDashboardData: usuário não definido ou sem ID', { userProfile, user })
       return
     }
 
     try {
-      console.log('Carregando dados do dashboard para usuário:', user.email, 'role:', user.role, 'id:', user.id)
+      console.log('Carregando dados do dashboard para usuário:', currentUser.email, 'role:', currentUser.role, 'id:', currentUser.id)
       
       // Buscar cursos disponíveis
       const { data: courses, error: coursesError } = await supabase
@@ -158,21 +165,21 @@ export default function HomePage() {
       }
 
       // Se for admin, carregar lista de funcionários
-      if (user?.role === 'admin') {
+      if (currentUser?.role === 'admin') {
         console.log('Usuário é admin - carregando lista de funcionários...')
         
         try {
           // Método simplificado: criar lista de usuários mockados para teste
           const mockUsers: User[] = [
             {
-              id: user.id,
-              name: user.name || 'Admin Principal',
-              email: user.email,
-              department: (user.department as Department) || 'HR',
-              role: user.role as 'admin' | 'user',
-              avatar: user.avatar || '',
-              created_at: user.created_at || new Date().toISOString(),
-              updated_at: user.updated_at || new Date().toISOString()
+              id: currentUser.id,
+              name: currentUser.name || 'Admin Principal',
+              email: currentUser.email,
+              department: (currentUser.department as Department) || 'HR',
+              role: currentUser.role as 'admin' | 'user',
+              avatar: currentUser.avatar || '',
+              created_at: currentUser.created_at || new Date().toISOString(),
+              updated_at: currentUser.updated_at || new Date().toISOString()
             },
             {
               id: 'mock-user-1',
@@ -253,7 +260,7 @@ export default function HomePage() {
         completedCourses: 0,
         totalWatchTime: 0,
         certificatesEarned: certificates?.length || 0,
-        totalUsers: user?.role === 'admin' ? (employees.length || 0) : 0
+        totalUsers: currentUser?.role === 'admin' ? (employees.length || 0) : 0
       })
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
