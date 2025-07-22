@@ -170,12 +170,14 @@ const CourseManagement: React.FC = () => {
           }
           
           // Atualizar aulas existentes
-          for (const lesson of updatedLessons) {
+          for (let i = 0; i < updatedLessons.length; i++) {
+            const lesson = updatedLessons[i]
             console.log('Atualizando aula:', lesson)
             const { content, ...rest } = lesson;
             const { error: updateError } = await supabase.from('videos').update({
               ...rest,
               video_url: lesson.content,
+              order_index: i, // Manter ordem correta
               updated_at: new Date().toISOString()
             }).eq('id', lesson.id)
             
@@ -194,7 +196,7 @@ const CourseManagement: React.FC = () => {
                 ...rest,
                 video_url: lesson.content,
                 course_id: editingCourse.id,
-                order_index: idx + updatedLessons.length,
+                order_index: idx + updatedLessons.length, // Continuar a numeração
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               }

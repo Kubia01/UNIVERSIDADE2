@@ -56,44 +56,59 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
   }
 
   const handleComplete = () => {
+    console.log('Marcando aula como concluída:', {
+      lesson: lesson.title,
+      user: user.name,
+      course: course.title
+    })
     setIsCompleted(true)
     saveLessonProgress(true)
     onComplete()
   }
 
   const saveLessonProgress = async (completed: boolean = false) => {
+    console.log('Salvando progresso da aula:', {
+      user_id: user.id,
+      lesson_id: lesson.id,
+      course_id: course.id,
+      is_completed: completed,
+      progress_percentage: completed ? 100 : Math.min((currentTime / duration) * 100, 95),
+      time_watched: Math.floor(currentTime)
+    })
+
     try {
-      const { error } = await supabase
+      const progressData = {
+        user_id: user.id,
+        lesson_id: lesson.id,
+        course_id: course.id,
+        is_completed: completed,
+        progress_percentage: completed ? 100 : Math.min((currentTime / duration) * 100, 95),
+        time_watched: Math.floor(currentTime),
+        completed_at: completed ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString()
+      }
+
+      const { data, error } = await supabase
         .from('lesson_progress')
-        .upsert({
-          user_id: user.id,
-          lesson_id: lesson.id,
-          course_id: course.id,
-          is_completed: completed,
-          progress_percentage: completed ? 100 : Math.min((currentTime / duration) * 100, 95),
-          time_watched: Math.floor(currentTime),
-          completed_at: completed ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString()
-        }, {
+        .upsert(progressData, {
           onConflict: 'user_id,lesson_id'
         })
+        .select()
 
       if (error) {
         console.error('Erro ao salvar progresso:', error)
+        alert('Erro ao salvar progresso: ' + error.message)
       } else {
-        console.log('Progresso salvo com sucesso:', {
-          lesson: lesson.title,
-          completed,
-          progress: completed ? 100 : Math.min((currentTime / duration) * 100, 95)
-        })
-
-        // Se a aula foi concluída, verificar se o curso foi completado
+        console.log('Progresso salvo com sucesso:', data)
+        
         if (completed) {
-          await checkCourseCompletion()
+          console.log('Aula marcada como concluída, verificando conclusão do curso...')
+          setTimeout(() => checkCourseCompletion(), 2000) // Aguardar trigger processar
         }
       }
     } catch (error) {
       console.error('Erro inesperado ao salvar progresso:', error)
+      alert('Erro inesperado ao salvar progresso.')
     }
   }
 
@@ -199,6 +214,14 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
   }
 
   const renderLessonContent = () => {
+    console.log('Renderizando conteúdo da aula:', {
+      type: lesson.type,
+      content: lesson.content,
+      isYouTube: isYouTubeUrl(lesson.content),
+      isVimeo: isVimeoUrl(lesson.content),
+      isDirect: isDirectVideoUrl(lesson.content)
+    })
+
     switch (lesson.type) {
       case 'video':
         return (
