@@ -59,7 +59,11 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
 
   const loadExistingLessons = async (courseId: string) => {
     try {
+<<<<<<< HEAD
+      console.log('🔄 CORRIGIDO: Carregando aulas para curso:', courseId, 'da tabela VIDEOS')
+=======
       console.log('Carregando aulas para curso:', courseId)
+>>>>>>> 8159de5 (Fix: Corrigir erro de sintaxe no arquivo CourseCreation.tsx (#40))
       const { data: videos, error } = await supabase
         .from('course_videos')
         .select('*')
