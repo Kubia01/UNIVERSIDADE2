@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { ArrowLeft, Play, Pause, SkipBack, SkipForward, Volume2, Maximize, CheckCircle, FileText, ExternalLink, HelpCircle } from 'lucide-react'
-import { Course, Lesson, User } from '@/lib/supabase'
+import { Course, Lesson, User, supabase } from '@/lib/supabase'
 
 interface LessonPlayerProps {
   course: Course
@@ -57,7 +57,77 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
 
   const handleComplete = () => {
     setIsCompleted(true)
+    saveLessonProgress(true)
     onComplete()
+  }
+
+  const saveLessonProgress = async (completed: boolean = false) => {
+    try {
+      const { error } = await supabase
+        .from('lesson_progress')
+        .upsert({
+          user_id: user.id,
+          lesson_id: lesson.id,
+          course_id: course.id,
+          is_completed: completed,
+          progress_percentage: completed ? 100 : Math.min((currentTime / duration) * 100, 95),
+          time_watched: Math.floor(currentTime),
+          completed_at: completed ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id,lesson_id'
+        })
+
+      if (error) {
+        console.error('Erro ao salvar progresso:', error)
+      } else {
+        console.log('Progresso salvo com sucesso:', {
+          lesson: lesson.title,
+          completed,
+          progress: completed ? 100 : Math.min((currentTime / duration) * 100, 95)
+        })
+      }
+    } catch (error) {
+      console.error('Erro inesperado ao salvar progresso:', error)
+    }
+  }
+
+  // Salvar progresso automaticamente a cada 30 segundos
+  useEffect(() => {
+    if (currentTime > 0 && !isCompleted) {
+      const interval = setInterval(() => {
+        saveLessonProgress(false)
+      }, 30000) // 30 segundos
+
+      return () => clearInterval(interval)
+    }
+  }, [currentTime, isCompleted])
+
+  // Carregar progresso existente
+  useEffect(() => {
+    loadLessonProgress()
+  }, [lesson.id, user.id])
+
+  const loadLessonProgress = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('lesson_progress')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('lesson_id', lesson.id)
+        .single()
+
+      if (data && !error) {
+        setIsCompleted(data.is_completed)
+        if (data.time_watched > 0) {
+          setCurrentTime(data.time_watched)
+        }
+        console.log('Progresso carregado:', data)
+      }
+    } catch (error) {
+      // Não há progresso salvo ainda, isso é normal
+      console.log('Nenhum progresso encontrado para esta aula')
+    }
   }
 
   const formatTime = (seconds: number) => {
@@ -71,64 +141,118 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
       case 'video':
         return (
           <div className="relative w-full h-full bg-black rounded-lg overflow-hidden">
-            {/* Video Player Placeholder */}
-            <div className="w-full h-full flex items-center justify-center">
-              <div className="text-center">
-                <Play className="h-16 w-16 text-white mx-auto mb-4" />
-                <p className="text-white text-lg">Player de Vídeo</p>
-                <p className="text-gray-300 text-sm">URL: {lesson.content}</p>
-              </div>
-            </div>
-
-            {/* Video Controls */}
-            <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
-              {/* Progress Bar */}
-              <div className="mb-4">
-                <div 
-                  className="w-full h-2 bg-gray-600 rounded-full cursor-pointer"
-                  onClick={handleProgressClick}
+            {/* Video Player */}
+            <div className="w-full h-full">
+              {isYouTubeUrl(lesson.content) ? (
+                <iframe
+                  src={getYouTubeEmbedUrl(lesson.content)}
+                  className="w-full h-full"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  title={lesson.title}
+                />
+              ) : isVimeoUrl(lesson.content) ? (
+                <iframe
+                  src={getVimeoEmbedUrl(lesson.content)}
+                  className="w-full h-full"
+                  frameBorder="0"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                  title={lesson.title}
+                />
+              ) : isDirectVideoUrl(lesson.content) ? (
+                <video
+                  className="w-full h-full"
+                  controls
+                  preload="metadata"
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+                  onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
                 >
-                  <div 
-                    className="h-2 bg-blue-600 rounded-full"
-                    style={{ width: `${(currentTime / duration) * 100}%` }}
-                  />
+                  <source src={lesson.content} type="video/mp4" />
+                  <source src={lesson.content} type="video/webm" />
+                  <source src={lesson.content} type="video/ogg" />
+                  Seu navegador não suporta o elemento de vídeo.
+                </video>
+              ) : (
+                // Fallback para URLs que não são reconhecidas
+                <div className="w-full h-full flex flex-col items-center justify-center text-white">
+                  <div className="text-center max-w-md">
+                    <Play className="h-16 w-16 mx-auto mb-4 text-white/80" />
+                    <h3 className="text-xl font-semibold mb-2">Conteúdo de Vídeo</h3>
+                    <p className="text-gray-300 mb-6">{lesson.description}</p>
+                    <a
+                      href={lesson.content}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Abrir Vídeo em Nova Aba
+                    </a>
+                    <p className="text-xs text-gray-400 mt-4">
+                      URL: {lesson.content}
+                    </p>
+                  </div>
                 </div>
-              </div>
-
-              {/* Controls */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <button
-                    onClick={handlePlayPause}
-                    className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full transition-all"
-                  >
-                    {isPlaying ? (
-                      <Pause className="h-6 w-6 text-white" />
-                    ) : (
-                      <Play className="h-6 w-6 text-white" />
-                    )}
-                  </button>
-                  <span className="text-white text-sm">
-                    {formatTime(currentTime)} / {formatTime(duration)}
-                  </span>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <button className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full transition-all">
-                    <Volume2 className="h-5 w-5 text-white" />
-                  </button>
-                  <button className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full transition-all">
-                    <Maximize className="h-5 w-5 text-white" />
-                  </button>
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* Click overlay to show/hide controls */}
-            <div 
-              className="absolute inset-0 cursor-pointer"
-              onClick={() => setShowControls(!showControls)}
-            />
+            {/* Custom Controls Overlay (apenas para vídeos diretos) */}
+            {isDirectVideoUrl(lesson.content) && (
+              <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-4 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0'}`}>
+                {/* Progress Bar */}
+                <div className="mb-4">
+                  <div 
+                    className="w-full h-2 bg-gray-600 rounded-full cursor-pointer"
+                    onClick={handleProgressClick}
+                  >
+                    <div 
+                      className="h-2 bg-blue-600 rounded-full"
+                      style={{ width: `${(currentTime / duration) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Controls */}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <button
+                      onClick={handlePlayPause}
+                      className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full transition-all"
+                    >
+                      {isPlaying ? (
+                        <Pause className="h-6 w-6 text-white" />
+                      ) : (
+                        <Play className="h-6 w-6 text-white" />
+                      )}
+                    </button>
+                    <span className="text-white text-sm">
+                      {formatTime(currentTime)} / {formatTime(duration)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <button className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full transition-all">
+                      <Volume2 className="h-5 w-5 text-white" />
+                    </button>
+                    <button className="p-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-full transition-all">
+                      <Maximize className="h-5 w-5 text-white" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Click overlay to show/hide controls (apenas para vídeos diretos) */}
+            {isDirectVideoUrl(lesson.content) && (
+              <div 
+                className="absolute inset-0 cursor-pointer"
+                onClick={() => setShowControls(!showControls)}
+              />
+            )}
           </div>
         )
 
@@ -203,6 +327,37 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
           </div>
         )
     }
+  }
+
+  // Funções auxiliares para detectar tipos de URL
+  const isYouTubeUrl = (url: string) => {
+    return /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)/.test(url)
+  }
+
+  const isVimeoUrl = (url: string) => {
+    return /vimeo\.com\//.test(url)
+  }
+
+  const isDirectVideoUrl = (url: string) => {
+    return /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv)(\?.*)?$/i.test(url)
+  }
+
+  const getYouTubeEmbedUrl = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+    const match = url.match(regExp)
+    if (match && match[2].length === 11) {
+      return `https://www.youtube.com/embed/${match[2]}?autoplay=0&rel=0`
+    }
+    return url
+  }
+
+  const getVimeoEmbedUrl = (url: string) => {
+    const regExp = /vimeo\.com\/(\d+)/
+    const match = url.match(regExp)
+    if (match) {
+      return `https://player.vimeo.com/video/${match[1]}?autoplay=0`
+    }
+    return url
   }
 
   return (

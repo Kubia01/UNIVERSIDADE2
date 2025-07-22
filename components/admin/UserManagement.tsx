@@ -85,6 +85,26 @@ const UserManagement: React.FC = () => {
     }
 
     try {
+      setLoading(true)
+      
+      // Verificar se já existe um usuário com este email
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', newUser.email)
+        .single()
+
+      if (existingUser) {
+        alert('Já existe um usuário cadastrado com este email.')
+        setLoading(false)
+        return
+      }
+
+      // Se não encontrou usuário (erro é esperado), continua
+      if (checkError && checkError.code !== 'PGRST116') {
+        throw checkError
+      }
+
       // Criar usuário no Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: newUser.email,
@@ -100,17 +120,21 @@ const UserManagement: React.FC = () => {
 
       if (authError) throw authError
 
-      // Criar perfil na tabela profiles
+      // Criar perfil na tabela profiles apenas se o usuário foi criado com sucesso
       if (authData.user) {
         const { error: profileError } = await supabase
           .from('profiles')
-          .insert([{
+          .upsert([{
             id: authData.user.id,
             name: newUser.name,
             email: newUser.email,
             department: newUser.department,
-            role: newUser.role
-          }])
+            role: newUser.role,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }], {
+            onConflict: 'id'
+          })
 
         if (profileError) throw profileError
       }
@@ -124,10 +148,16 @@ const UserManagement: React.FC = () => {
         role: 'user'
       })
       alert(`Usuário criado com sucesso!\nLogin: ${newUser.email}\nSenha: ${newUser.password}`)
-      loadUsers()
+      await loadUsers()
     } catch (error: any) {
       console.error('Erro ao criar usuário:', error)
-      alert('Erro ao criar usuário: ' + error.message)
+      if (error.message.includes('duplicate key')) {
+        alert('Este email já está cadastrado no sistema.')
+      } else {
+        alert('Erro ao criar usuário: ' + error.message)
+      }
+    } finally {
+      setLoading(false)
     }
   }
 

@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Upload, Plus, Trash2, Save, Video, FileText, HelpCircle, Link, X } from 'lucide-react'
-import { CourseType, Course, Lesson, LessonType } from '@/lib/supabase'
+import { ArrowLeft, Upload, Plus, Trash2, Save, Video, FileText, HelpCircle, Link, X, Edit } from 'lucide-react'
+import { CourseType, Course, Lesson, LessonType, supabase } from '@/lib/supabase'
 
 interface CourseCreationProps {
   course?: Course | null
@@ -31,6 +31,9 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
   })
 
   const [showLessonForm, setShowLessonForm] = useState(false)
+  const [editingLessonIndex, setEditingLessonIndex] = useState<number | null>(null)
+  const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [contentInputType, setContentInputType] = useState<'url' | 'upload'>('url')
 
   // Load course data if editing
   useEffect(() => {
@@ -74,22 +77,86 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
     }
   }
 
+  const handleVideoUpload = async (file: File) => {
+    if (!file) return
+
+    // Validar tipo de arquivo
+    const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov']
+    if (!allowedTypes.includes(file.type)) {
+      alert('Tipo de arquivo não suportado. Use MP4, WebM, OGG, AVI ou MOV.')
+      return
+    }
+
+    // Validar tamanho (100MB max)
+    if (file.size > 100 * 1024 * 1024) {
+      alert('Arquivo muito grande. Tamanho máximo: 100MB.')
+      return
+    }
+
+    setUploadingVideo(true)
+
+    try {
+      // Criar nome único para o arquivo
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      
+      // Upload para o Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('course-videos')
+        .upload(fileName, file)
+
+      if (error) throw error
+
+      // Obter URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('course-videos')
+        .getPublicUrl(fileName)
+
+      // Atualizar o campo de conteúdo com a URL
+      setCurrentLesson({
+        ...currentLesson,
+        content: publicUrl
+      })
+
+      alert('Vídeo enviado com sucesso!')
+    } catch (error: any) {
+      console.error('Erro ao fazer upload:', error)
+      alert('Erro ao fazer upload do vídeo: ' + error.message)
+    } finally {
+      setUploadingVideo(false)
+    }
+  }
+
   const handleAddLesson = () => {
     if (!currentLesson.title || !currentLesson.content) {
       alert('Por favor, preencha o título e conteúdo da aula.')
       return
     }
 
-    const newLesson = {
-      ...currentLesson,
-      order_index: courseData.lessons.length
+    if (editingLessonIndex !== null) {
+      // Editando aula existente
+      const updatedLessons = [...courseData.lessons]
+      updatedLessons[editingLessonIndex] = {
+        ...currentLesson,
+        order_index: editingLessonIndex
+      }
+      setCourseData({
+        ...courseData,
+        lessons: updatedLessons
+      })
+    } else {
+      // Adicionando nova aula
+      const newLesson = {
+        ...currentLesson,
+        order_index: courseData.lessons.length
+      }
+      setCourseData({
+        ...courseData,
+        lessons: [...courseData.lessons, newLesson]
+      })
     }
 
-    setCourseData({
-      ...courseData,
-      lessons: [...courseData.lessons, newLesson]
-    })
-
+    // Resetar formulário
     setCurrentLesson({
       title: '',
       description: '',
@@ -97,8 +164,33 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
       content: '',
       duration: 0
     })
-
     setShowLessonForm(false)
+    setEditingLessonIndex(null)
+  }
+
+  const handleEditLesson = (index: number) => {
+    const lesson = courseData.lessons[index]
+    setCurrentLesson({
+      title: lesson.title,
+      description: lesson.description,
+      type: lesson.type,
+      content: lesson.content,
+      duration: lesson.duration || 0
+    })
+    setEditingLessonIndex(index)
+    setShowLessonForm(true)
+  }
+
+  const handleCancelEdit = () => {
+    setCurrentLesson({
+      title: '',
+      description: '',
+      type: 'video',
+      content: '',
+      duration: 0
+    })
+    setShowLessonForm(false)
+    setEditingLessonIndex(null)
   }
 
   const handleRemoveLesson = (index: number) => {
@@ -321,12 +413,20 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
                       </p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleRemoveLesson(index)}
-                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleEditLesson(index)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleRemoveLesson(index)}
+                      className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -337,14 +437,24 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
             <div className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 bg-gray-50 dark:bg-gray-700">
               <div className="flex items-center justify-between mb-4">
                 <h4 className="font-medium text-gray-900 dark:text-white">
-                  Nova Aula
+                  {editingLessonIndex !== null ? 'Editar Aula' : 'Nova Aula'}
                 </h4>
-                <button
-                  onClick={() => setShowLessonForm(false)}
-                  className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
-                >
-                  <X className="h-4 w-4" />
-                </button>
+                <div className="flex space-x-2">
+                  {editingLessonIndex !== null && (
+                    <button
+                      onClick={handleCancelEdit}
+                      className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowLessonForm(false)}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -393,21 +503,6 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {currentLesson.type === 'video' ? 'URL do Vídeo' : 
-                     currentLesson.type === 'document' ? 'URL do Documento/PDF' :
-                     currentLesson.type === 'link' ? 'URL do Link' : 'Conteúdo'}
-                  </label>
-                  <input
-                    type="url"
-                    value={currentLesson.content}
-                    onChange={(e) => setCurrentLesson({ ...currentLesson, content: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Cole a URL do conteúdo"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Duração (minutos)
                   </label>
                   <input
@@ -419,20 +514,117 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
                     min="0"
                   />
                 </div>
+
+                {/* Campo de conteúdo com opções de URL ou Upload */}
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {currentLesson.type === 'video' ? 'Conteúdo do Vídeo' : 
+                     currentLesson.type === 'document' ? 'Documento/PDF' :
+                     currentLesson.type === 'link' ? 'URL do Link' : 'Conteúdo'}
+                  </label>
+                  
+                  {currentLesson.type === 'video' && (
+                    <div className="mb-3">
+                      <div className="flex space-x-4">
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="contentType"
+                            value="url"
+                            checked={contentInputType === 'url'}
+                            onChange={() => setContentInputType('url')}
+                            className="mr-2"
+                          />
+                          <span className="text-sm">URL do Vídeo</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="contentType"
+                            value="upload"
+                            checked={contentInputType === 'upload'}
+                            onChange={() => setContentInputType('upload')}
+                            className="mr-2"
+                          />
+                          <span className="text-sm">Upload do Computador</span>
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {currentLesson.type === 'video' && contentInputType === 'upload' ? (
+                    <div className="space-y-3">
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center">
+                        {uploadingVideo ? (
+                          <div className="flex flex-col items-center">
+                            <div className="loading-spinner w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">Enviando vídeo...</p>
+                          </div>
+                        ) : (
+                          <>
+                            <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                              Clique para selecionar ou arraste um vídeo aqui
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-500">
+                              MP4, WebM, OGG, AVI, MOV (máx. 100MB)
+                            </p>
+                            <input
+                              type="file"
+                              accept="video/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) handleVideoUpload(file)
+                              }}
+                              className="hidden"
+                              id="video-upload"
+                            />
+                            <label
+                              htmlFor="video-upload"
+                              className="mt-4 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors"
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Selecionar Vídeo
+                            </label>
+                          </>
+                        )}
+                      </div>
+                      {currentLesson.content && (
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                          <p className="text-sm text-green-800 dark:text-green-200">
+                            ✓ Vídeo carregado com sucesso!
+                          </p>
+                          <p className="text-xs text-green-600 dark:text-green-400 mt-1 break-all">
+                            {currentLesson.content}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <input
+                      type="url"
+                      value={currentLesson.content}
+                      onChange={(e) => setCurrentLesson({ ...currentLesson, content: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder={currentLesson.type === 'video' && contentInputType === 'url' ? 'https://youtube.com/watch?v=... ou https://exemplo.com/video.mp4' : 'Cole a URL do conteúdo'}
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="flex space-x-3 mt-4">
                 <button
-                  onClick={() => setShowLessonForm(false)}
+                  onClick={handleCancelEdit}
                   className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleAddLesson}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  disabled={uploadingVideo}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Adicionar Aula
+                  {uploadingVideo ? 'Enviando...' : editingLessonIndex !== null ? 'Atualizar Aula' : 'Adicionar Aula'}
                 </button>
               </div>
             </div>
