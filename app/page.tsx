@@ -53,18 +53,19 @@ export default function HomePage() {
   })
   const [recentCourses, setRecentCourses] = useState<any[]>([])
   const [dashboardProgress, setDashboardProgress] = useState<{[key: string]: number}>({})
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
   const router = useRouter()
 
   useEffect(() => {
     checkUser()
   }, [])
 
-  // Recarregar dados quando funcionário selecionado mudar
+  // Recarregar dados quando funcionário selecionado mudar ou quando houver trigger
   useEffect(() => {
-    if (user && user.role === 'admin') {
+    if (user) {
       loadDashboardData(user)
     }
-  }, [selectedEmployee]) // Removido user da dependência para evitar loop
+  }, [selectedEmployee, refreshTrigger]) // Adicionado refreshTrigger para forçar reload
 
   const checkUser = async () => {
     try {
@@ -303,23 +304,97 @@ export default function HomePage() {
         setEmployees([])
       }
 
-      // Buscar estatísticas básicas
+      // Buscar estatísticas do usuário atual
+      const targetUserId = selectedEmployee?.id || currentUser.id
+      
+      // Buscar certificados do usuário específico
       const { data: certificates, error: certificatesError } = await supabase
         .from('certificates')
         .select('*')
+        .eq('user_id', targetUserId)
       
       if (certificatesError) {
         console.error('Erro ao carregar certificados:', certificatesError)
       }
 
-      // Calcular estatísticas simples
-      setStats({
+      // Buscar progresso dos cursos para calcular cursos concluídos
+      let userProgress: any[] = []
+      let completedCoursesCount = 0
+      
+      try {
+        const { data: progressData, error: progressError } = await supabase
+          .from('user_progress')
+          .select('course_id, progress, completed_at')
+          .eq('user_id', targetUserId)
+        
+        if (progressError) {
+          console.error('Erro ao carregar progresso do usuário:', progressError)
+          console.error('Código do erro:', progressError.code)
+          console.error('Detalhes:', progressError.details)
+        } else {
+          userProgress = progressData || []
+          // Calcular cursos concluídos (100% de progresso)
+          completedCoursesCount = userProgress.filter(p => p.progress >= 100).length
+          console.log('Dados do progresso do usuário:', userProgress)
+          console.log('Cursos concluídos encontrados:', completedCoursesCount)
+        }
+      } catch (error) {
+        console.error('Erro inesperado ao buscar progresso:', error)
+      }
+
+      // Buscar tempo total de estudo das aulas concluídas
+      let totalWatchTimeMinutes = 0
+      
+      try {
+        const { data: completedLessons, error: lessonsError } = await supabase
+          .from('lesson_progress')
+          .select('lesson_id')
+          .eq('user_id', targetUserId)
+          .not('completed_at', 'is', null)
+        
+        if (lessonsError) {
+          console.error('Erro ao carregar aulas concluídas:', lessonsError)
+          console.error('Código do erro:', lessonsError.code)
+        } else if (completedLessons && completedLessons.length > 0) {
+          console.log('Aulas concluídas encontradas:', completedLessons.length)
+          
+          // Buscar durações das aulas concluídas
+          const lessonIds = completedLessons.map(l => l.lesson_id)
+          const { data: videosData, error: videosError } = await supabase
+            .from('videos')
+            .select('id, duration')
+            .in('id', lessonIds)
+          
+          if (videosError) {
+            console.error('Erro ao carregar dados dos vídeos:', videosError)
+          } else if (videosData) {
+            totalWatchTimeMinutes = videosData.reduce((total, video) => {
+              return total + (video.duration || 0)
+            }, 0)
+            console.log('Dados dos vídeos:', videosData)
+            console.log('Tempo total calculado (minutos):', totalWatchTimeMinutes)
+          }
+        } else {
+          console.log('Nenhuma aula concluída encontrada para o usuário:', targetUserId)
+        }
+      } catch (error) {
+        console.error('Erro inesperado ao calcular tempo de estudo:', error)
+      }
+
+      // Converter minutos para horas
+      const totalWatchTimeHours = Math.round(totalWatchTimeMinutes / 60 * 10) / 10
+
+      // Calcular estatísticas finais
+      const finalStats = {
         totalCourses: courses?.length || 0,
-        completedCourses: 0,
-        totalWatchTime: 0,
+        completedCourses: completedCoursesCount,
+        totalWatchTime: totalWatchTimeHours,
         certificatesEarned: certificates?.length || 0,
         totalUsers: currentUser?.role === 'admin' ? (employees.length || 0) : 0
-      })
+      }
+      
+      console.log('Estatísticas finais calculadas:', finalStats)
+      setStats(finalStats)
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     }
@@ -381,7 +456,10 @@ export default function HomePage() {
 
   const handleLessonComplete = () => {
     console.log('Lesson completed')
-    // Here you would typically save progress to the database
+    // Recarregar dados do dashboard após conclusão da aula
+    setTimeout(() => {
+      setRefreshTrigger(prev => prev + 1)
+    }, 2000) // Aguardar 2 segundos para garantir que o progresso foi salvo
   }
 
   const handleLessonNavigation = (direction: 'next' | 'previous') => {
