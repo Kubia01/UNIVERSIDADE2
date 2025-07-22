@@ -11,6 +11,19 @@ interface CourseViewerProps {
 
 const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => {
   console.log('[CourseViewer] Renderizando CourseViewer. user:', user, 'onCourseSelect:', onCourseSelect)
+  
+  // Se não há usuário, mostrar loading ou erro
+  if (!user) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="loading-spinner w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Carregando informações do usuário...</p>
+        </div>
+      </div>
+    )
+  }
+
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -51,14 +64,16 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
         .order('created_at', { ascending: false })
 
       if (error) throw error
+      console.log('[CourseViewer] Cursos carregados:', data)
       setCourses(data || [])
       
-      // Carregar aulas para cada curso
+      // Carregar aulas para cada curso apenas se há cursos
       if (data && data.length > 0) {
         await loadCourseLessons(data)
       }
     } catch (error) {
       console.error('Erro ao carregar cursos:', error)
+      setCourses([])
     } finally {
       setLoading(false)
     }
@@ -96,7 +111,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
     
     const matchesDepartment = selectedDepartment === 'All' || 
                              course.department === selectedDepartment ||
-                             course.department === user.department
+                             course.department === user?.department
 
     const matchesType = selectedType === 'All' || course.type === selectedType
 
