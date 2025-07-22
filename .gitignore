@@ -44,3 +44,22 @@ next-env.d.ts
 
 # OS
 Thumbs.db
+
+# Arquivos temporários e backup
+*.sql
+*.bak
+*.backup
+*.tmp
+*.log
+
+# Documentação temporária
+SOLUCAO_*.md
+CORRECAO_*.md
+AJUSTES_*.md
+FUNCIONALIDADES_*.md
+emergency_*.md
+fix_*.md
+
+# Cache
+.cache/
+*.cache
