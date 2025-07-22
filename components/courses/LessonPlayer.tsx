@@ -71,21 +71,16 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
       user_id: user.id,
       lesson_id: lesson.id,
       course_id: course.id,
-      is_completed: completed,
-      progress_percentage: completed ? 100.00 : Math.min((currentTime / duration) * 100, 95),
-      time_watched: Math.floor(currentTime)
+      completed: completed
     })
 
     try {
+      // Dados para lesson_progress (estrutura simplificada)
       const progressData = {
         user_id: user.id,
         lesson_id: lesson.id,
         course_id: course.id,
-        is_completed: completed,
-        progress_percentage: completed ? 100.00 : Math.min((currentTime / duration) * 100, 95),
-        time_watched: Math.floor(currentTime),
-        completed_at: completed ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString()
+        completed_at: completed ? new Date().toISOString() : null
       }
 
       const { data, error } = await supabase
@@ -97,6 +92,9 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
 
       if (error) {
         console.error('Erro ao salvar progresso:', error)
+        console.error('Dados enviados:', progressData)
+        console.error('Código do erro:', error.code)
+        console.error('Detalhes do erro:', error.details)
         alert('Erro ao salvar progresso: ' + error.message)
       } else {
         console.log('Progresso salvo com sucesso:', data)
