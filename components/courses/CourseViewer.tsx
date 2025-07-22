@@ -54,7 +54,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
 
   useEffect(() => {
     loadCourses()
-  }, [])
+  }, [user.id]) // Adicionar dependência do user.id para recarregar quando usuário mudar
 
   const loadCourses = async () => {
     try {
