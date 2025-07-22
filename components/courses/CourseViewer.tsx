@@ -31,6 +31,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
   const [selectedType, setSelectedType] = useState<CourseType | 'All'>('All')
   const [showFilters, setShowFilters] = useState(false)
   const [courseLessons, setCourseLessons] = useState<{[key: string]: any[]}>({})
+  const [courseProgress, setCourseProgress] = useState<{[key: string]: number}>({})
 
   const departments: { value: Department | 'All'; label: string }[] = [
     { value: 'All', label: 'Todos os Departamentos' },
@@ -70,12 +71,36 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
       // Carregar aulas para cada curso apenas se há cursos
       if (data && data.length > 0) {
         await loadCourseLessons(data)
+        // Carregar progresso dos cursos
+        const courseIds = data.map(course => course.id)
+        await loadCourseProgress(courseIds)
       }
     } catch (error) {
       console.error('Erro ao carregar cursos:', error)
       setCourses([])
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadCourseProgress = async (courseIds: string[]) => {
+    try {
+      const { data: progressData, error } = await supabase
+        .from('user_progress')
+        .select('course_id, progress')
+        .eq('user_id', user.id)
+        .in('course_id', courseIds)
+
+      if (!error && progressData) {
+        const progressMap: {[key: string]: number} = {}
+        progressData.forEach(p => {
+          progressMap[p.course_id] = p.progress || 0
+        })
+        setCourseProgress(progressMap)
+        console.log('Progresso dos cursos carregado:', progressMap)
+      }
+    } catch (error) {
+      console.error('Erro ao carregar progresso dos cursos:', error)
     }
   }
 
@@ -295,10 +320,13 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
                   <div className="mb-6">
                     <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-2">
                       <span className="font-medium">Seu Progresso</span>
-                      <span>0%</span>
+                      <span>{courseProgress[course.id] || 0}%</span>
                     </div>
                     <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
-                      <div className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" style={{ width: '0%' }}></div>
+                      <div 
+                        className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full transition-all duration-300" 
+                        style={{ width: `${courseProgress[course.id] || 0}%` }}
+                      ></div>
                     </div>
                   </div>
 
