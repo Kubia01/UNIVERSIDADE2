@@ -394,49 +394,51 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
 
         {/* Lessons Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               Aulas do Curso
             </h3>
-            <button
-              onClick={handleStartNewLesson}
-              className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Adicionar Aula
-            </button>
           </div>
 
-          {/* Existing Lessons */}
-          <div className="space-y-3 mb-6">
+          {/* Lessons List */}
+          <div className="space-y-4">
             {courseData.lessons.map((lesson, index) => {
               const Icon = getLessonIcon(lesson.type)
               return (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg"
+                  className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border hover:border-blue-300 transition-colors"
                 >
                   <div className="flex items-center space-x-3">
-                    <Icon className="h-5 w-5 text-blue-600" />
-                    <div>
+                    <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
+                      <Icon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div className="flex-1">
                       <p className="font-medium text-gray-900 dark:text-white">
                         {lesson.title}
                       </p>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
                         {lesson.type} • {lesson.duration || 0} min
                       </p>
+                      {lesson.description && (
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          {lesson.description}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="flex space-x-2">
                     <button
                       onClick={() => handleEditLesson(index)}
                       className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                      title="Editar aula"
                     >
                       <Edit className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => handleRemoveLesson(index)}
                       className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                      title="Remover aula"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -444,6 +446,29 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
                 </div>
               )
             })}
+
+            {courseData.lessons.length === 0 && (
+              <div className="text-center py-8 bg-gray-50 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600">
+                <div className="w-12 h-12 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center mx-auto mb-3">
+                  <Plus className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="text-gray-500 dark:text-gray-400 font-medium">Nenhuma aula adicionada</p>
+                <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+                  Clique em "Adicionar Aula" para começar a criar o conteúdo
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Add Lesson Button */}
+          <div className="flex justify-center pt-4">
+            <button
+              onClick={handleStartNewLesson}
+              className="flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors shadow-md hover:shadow-lg"
+            >
+              <Plus className="h-5 w-5 mr-2" />
+              Adicionar Nova Aula
+            </button>
           </div>
 
           {/* Add Lesson Form */}

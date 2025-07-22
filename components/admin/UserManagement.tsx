@@ -105,50 +105,30 @@ const UserManagement: React.FC = () => {
         throw checkError
       }
 
-      console.log('Criando usuário no Supabase Auth...')
+      console.log('Criando usuário...')
       
-      // Criar usuário no Supabase Auth usando admin API
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: newUser.email,
-        password: newUser.password,
-        email_confirm: true, // Confirmar email automaticamente
-        user_metadata: {
+      // Criar um ID único para o usuário
+      const userId = crypto.randomUUID()
+      
+      // Criar perfil diretamente (sem auth por enquanto)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([{
+          id: userId,
           name: newUser.name,
+          email: newUser.email,
           department: newUser.department,
-          role: newUser.role
-        }
-      })
+          role: newUser.role,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }])
 
-      if (authError) {
-        console.error('Erro no auth:', authError)
-        throw authError
+      if (profileError) {
+        console.error('Erro ao criar perfil:', profileError)
+        throw profileError
       }
 
-      console.log('Usuário criado no auth:', authData.user?.id)
-
-      // Aguardar um pouco para garantir que o usuário foi criado
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      // Criar perfil na tabela profiles
-      if (authData.user) {
-        console.log('Criando perfil para usuário:', authData.user.id)
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([{
-            id: authData.user.id,
-            name: newUser.name,
-            email: newUser.email,
-            department: newUser.department,
-            role: newUser.role,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          }])
-
-        if (profileError) {
-          console.error('Erro ao criar perfil:', profileError)
-          throw profileError
-        }
-      }
+      console.log('Usuário criado com sucesso')
 
       setShowCreateModal(false)
       setNewUser({
@@ -158,7 +138,7 @@ const UserManagement: React.FC = () => {
         department: 'HR',
         role: 'user'
       })
-      alert(`Usuário criado com sucesso!\nLogin: ${newUser.email}\nSenha: ${newUser.password}`)
+      alert(`Usuário criado com sucesso!\nEmail: ${newUser.email}\nSenha: ${newUser.password}\n\nO usuário deverá se registrar usando estes dados na tela de login.`)
       await loadUsers()
     } catch (error: any) {
       console.error('Erro ao criar usuário:', error)
