@@ -358,41 +358,23 @@ export default function HomePage() {
         } else if (completedLessons && completedLessons.length > 0) {
           console.log('Aulas concluídas encontradas:', completedLessons.length)
           
-          // Tentar buscar tempo realmente assistido das aulas concluídas
-          try {
-            const { data: watchTimeData, error: watchTimeError } = await supabase
-              .from('lesson_progress')
-              .select('lesson_id, time_watched')
-              .eq('user_id', targetUserId)
-              .not('completed_at', 'is', null)
-            
-            if (watchTimeError) {
-              console.log('Coluna time_watched não existe ainda, usando duração dos vídeos como fallback')
-              // Fallback: usar duração total dos vídeos se time_watched não existir
-              const lessonIds = completedLessons.map(l => l.lesson_id)
-              const { data: videosData, error: videosError } = await supabase
-                .from('videos')
-                .select('id, duration')
-                .in('id', lessonIds)
-              
-              if (!videosError && videosData) {
-                totalWatchTimeMinutes = videosData.reduce((total, video) => {
-                  return total + (video.duration || 0)
-                }, 0)
-                console.log('Usando duração dos vídeos como fallback:', totalWatchTimeMinutes, 'minutos')
-              }
-            } else if (watchTimeData) {
-              // Somar o tempo realmente assistido (em segundos) e converter para minutos
-              const totalWatchTimeSeconds = watchTimeData.reduce((total, lesson) => {
-                return total + (lesson.time_watched || 0)
-              }, 0)
-              totalWatchTimeMinutes = Math.round(totalWatchTimeSeconds / 60)
-              console.log('Dados do tempo assistido:', watchTimeData)
-              console.log('Tempo total assistido (segundos):', totalWatchTimeSeconds)
-              console.log('Tempo total assistido (minutos):', totalWatchTimeMinutes)
-            }
-          } catch (error) {
-            console.error('Erro ao carregar tempo assistido:', error)
+          // Buscar duração configurada das aulas concluídas
+          const lessonIds = completedLessons.map(l => l.lesson_id)
+          const { data: videosData, error: videosError } = await supabase
+            .from('videos')
+            .select('id, duration')
+            .in('id', lessonIds)
+          
+          if (videosError) {
+            console.error('Erro ao carregar dados dos vídeos:', videosError)
+          } else if (videosData) {
+            // Somar a duração configurada (em minutos) de todas as aulas concluídas
+            totalWatchTimeMinutes = videosData.reduce((total, video) => {
+              return total + (video.duration || 0)
+            }, 0)
+            console.log('Aulas concluídas:', videosData.length)
+            console.log('Dados dos vídeos:', videosData)
+            console.log('Tempo total de estudo (duração configurada):', totalWatchTimeMinutes, 'minutos')
           }
         } else {
           console.log('Nenhuma aula concluída encontrada para o usuário:', targetUserId)
