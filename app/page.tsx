@@ -11,6 +11,7 @@ import CourseManagement from '@/components/admin/CourseManagement'
 import CourseViewer from '@/components/courses/CourseViewer'
 import LessonPlayer from '@/components/courses/LessonPlayer'
 import CourseModule from '@/components/courses/CourseModule'
+import CoursesAndTraining from '@/components/courses/CoursesAndTraining'
 import CertificateManagement from '@/components/certificates/CertificateManagement'
 import CertificateViewer from '@/components/certificates/CertificateViewer'
 import AdminSettings from '@/components/admin/AdminSettings'
@@ -229,7 +230,7 @@ export default function HomePage() {
         return user?.role === 'admin' ? <UserManagement /> : <div className="p-6 text-center">Acesso negado</div>
       
       case 'courses':
-        return user?.role === 'admin' ? <CourseManagement /> : <CourseViewer user={user!} onCourseSelect={handleCourseSelect} />
+        return <CoursesAndTraining user={user!} onCourseSelect={handleCourseSelect} />
       
       case 'certificates':
         return user?.role === 'admin' ? <CertificateManagement /> : <CertificateViewer user={user!} />
