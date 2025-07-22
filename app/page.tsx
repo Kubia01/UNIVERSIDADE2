@@ -69,9 +69,13 @@ export default function HomePage() {
           .single()
         
         if (profile) {
+          console.log('Usuário carregado:', profile.name, 'role:', profile.role)
           setUser(profile)
-          // Carregar dados do dashboard após definir o usuário
-          setTimeout(() => loadDashboardData(), 100)
+          // Carregar dados do dashboard imediatamente após definir o usuário
+          setTimeout(() => {
+            console.log('Iniciando carregamento dos dados do dashboard...')
+            loadDashboardData()
+          }, 500)
         }
       } else {
         router.push('/login')
@@ -88,6 +92,8 @@ export default function HomePage() {
     if (!user) return
 
     try {
+      console.log('Carregando dados do dashboard para usuário:', user.email, 'role:', user.role)
+      
       // Buscar cursos disponíveis
       const { data: courses, error: coursesError } = await supabase
         .from('courses')
@@ -105,6 +111,7 @@ export default function HomePage() {
 
       // Se for admin, carregar lista de funcionários
       if (user?.role === 'admin') {
+        console.log('Usuário é admin, carregando lista de funcionários...')
         const { data: allUsers, error: usersError } = await supabase
           .from('profiles')
           .select('*')
@@ -114,9 +121,13 @@ export default function HomePage() {
           console.error('Erro ao carregar usuários:', usersError)
           setEmployees([])
         } else {
-          console.log('Usuários carregados:', allUsers)
+          console.log('Funcionários carregados:', allUsers?.length || 0, 'usuários')
+          console.log('Lista de funcionários:', allUsers?.map(u => ({ name: u.name, email: u.email })))
           setEmployees(allUsers || [])
         }
+      } else {
+        console.log('Usuário não é admin, não carregando lista de funcionários')
+        setEmployees([])
       }
 
       // Buscar estatísticas básicas
@@ -134,7 +145,7 @@ export default function HomePage() {
         completedCourses: 0,
         totalWatchTime: 0,
         certificatesEarned: certificates?.length || 0,
-        totalUsers: employees.length || 0
+        totalUsers: user?.role === 'admin' ? (employees.length || 0) : 0
       })
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
