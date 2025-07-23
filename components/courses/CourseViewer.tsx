@@ -66,7 +66,7 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
   useEffect(() => {
     // APENAS carregar se user existe e não foi inicializado
     if (!user?.id) {
-      console.log('[CourseViewer] ⏸️ Aguardando usuário')
+      console.log('[CourseViewer] ⏸️ Aguardando usuário. User atual:', user)
       return
     }
     
@@ -75,7 +75,7 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
       return
     }
     
-    console.log('[CourseViewer] 🚀 Iniciando carregamento para usuário:', user.name)
+    console.log('[CourseViewer] 🚀 Iniciando carregamento para usuário:', user.name, 'Role:', user.role, 'ID:', user.id)
     setInitialized(true)
     
     // Timeout de segurança para forçar finalização do loading
@@ -99,16 +99,26 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
     }
   }, [user?.id, initialized]) // Adicionar initialized como dependência
 
-  const loadCourses = async () => {
+  const loadCourses = async (forceReload = false) => {
     // EVITAR múltiplas chamadas simultâneas
     if (loading) {
       console.log('[CourseViewer] ⏸️ JÁ CARREGANDO - Ignorando')
       return
     }
     
-    console.log('[CourseViewer] ⚡ CARREGAMENTO ULTRA RÁPIDO')
+    console.log('[CourseViewer] ⚡ CARREGAMENTO ULTRA RÁPIDO', forceReload ? '(FORÇADO)' : '')
     setLoading(true)
     setConnectionError(false)
+
+    // Se forçar reload, limpar cache primeiro
+    if (forceReload) {
+      const queryUserId = user.role === 'admin' ? 'admin' : user.id
+      console.log('[CourseViewer] 🗑️ Limpando cache forçadamente')
+      // Limpar ultra cache
+      if (typeof window !== 'undefined' && (window as any).ultraCacheStats) {
+        (window as any).ultraCache?.delete?.(`courses-${queryUserId}-${user.role === 'admin'}`)
+      }
+    }
 
     try {
       // USAR CHAVE CONSISTENTE - admin usa 'admin', usuários normais usam user.id
@@ -224,9 +234,24 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
       
       const matchesDepartment = selectedDepartment === 'All' || 
                                course.department === selectedDepartment ||
-                               course.department === user?.department
+                               course.department === user?.department ||
+                               user?.role === 'admin' // Admins veem todos os cursos
 
       const matchesType = selectedType === 'All' || course.type === selectedType
+
+              // Debug: Log detalhado apenas no primeiro render ou quando há mudanças
+        if (renderCount.current <= 2) {
+          console.log(`[CourseViewer] 🔍 Filtro detalhado para "${course.title}":`)
+          console.log(`  - Search: "${searchTerm}" -> ${matchesSearch}`)
+          console.log(`  - Department check:`)
+          console.log(`    * selectedDepartment === 'All': ${selectedDepartment === 'All'}`)
+          console.log(`    * course.department === selectedDepartment: ${course.department === selectedDepartment}`)
+          console.log(`    * course.department === user?.department: ${course.department === user?.department}`)
+          console.log(`    * user?.role === 'admin': ${user?.role === 'admin'}`)
+          console.log(`    * Final matchesDepartment: ${matchesDepartment}`)
+          console.log(`  - Type: "${selectedType}" vs "${course.type}" -> ${matchesType}`)
+          console.log(`  - RESULTADO FINAL: ${matchesSearch && matchesDepartment && matchesType}`)
+        }
 
       return matchesSearch && matchesDepartment && matchesType
     })
@@ -237,6 +262,22 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
     
     return filtered
   }, [courses, searchTerm, selectedDepartment, selectedType, user?.department])
+
+  // Debug function para testar no console do browser
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).debugCourseViewer = {
+        forceReload: () => loadCourses(true),
+        getCourses: () => courses,
+        getFilteredCourses: () => filteredCourses,
+        getUser: () => user,
+        clearCache: () => {
+          const queryUserId = user?.role === 'admin' ? 'admin' : user?.id
+          console.log('Limpando cache para:', `courses-${queryUserId}-${user?.role === 'admin'}`)
+        }
+      }
+    }
+  }, [courses, filteredCourses, user])
 
   const getTypeColor = useCallback((type: CourseType) => {
     const colors = {
@@ -377,6 +418,13 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
       )}
 
       {/* Modules Grid */}
+      {(() => {
+        console.log('[CourseViewer] 🎯 VERIFICAÇÃO FINAL:')
+        console.log('  - connectionError:', connectionError)
+        console.log('  - filteredCourses.length:', filteredCourses.length)
+        console.log('  - filteredCourses:', filteredCourses.map(c => ({ id: c.id, title: c.title })))
+        return null
+      })()}
       {!connectionError && filteredCourses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((course) => {
