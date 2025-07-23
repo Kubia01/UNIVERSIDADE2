@@ -136,12 +136,14 @@ const UserManagement: React.FC = () => {
       await loadUsers()
     } catch (error: any) {
       console.error('Erro ao criar usuário:', error)
-      if (error.message.includes('duplicate key')) {
-        alert('Este email já está cadastrado no sistema.')
+      if (error.message.includes('already been registered')) {
+        alert('⚠️ Este email já está cadastrado no sistema.\n\nPor favor, use um email diferente ou verifique se o usuário já existe na lista.')
+      } else if (error.message.includes('duplicate key')) {
+        alert('⚠️ Este email já está cadastrado no sistema.')
       } else if (error.message.includes('foreign key')) {
-        alert('Erro interno: Problema na criação do usuário. Tente novamente.')
+        alert('❌ Erro interno: Problema na criação do usuário. Tente novamente.')
       } else {
-        alert('Erro ao criar usuário: ' + error.message)
+        alert('❌ Erro ao criar usuário: ' + error.message)
       }
     } finally {
       setLoading(false)
