@@ -299,8 +299,8 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
     return labels[type]
   }, [])
 
-  // Mostrar loading apenas se não inicializou E não tem cursos
-  if (loading && !initialized && courses.length === 0) {
+  // Mostrar loading apenas se está carregando E não tem cursos
+  if (loading && courses.length === 0) {
     return (
       <div className="p-6 space-y-6">
         {/* Header skeleton */}
