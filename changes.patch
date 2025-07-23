@@ -1,0 +1,162 @@
+From d6a8422cb4c4682c69119cde8056a839453667db Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Wed, 23 Jul 2025 18:22:54 +0000
+Subject: [PATCH 1/2] Checkpoint before follow-up message
+
+---
+ components/courses/CourseViewer.tsx | 29 ++++++++++++++++++++++-------
+ 1 file changed, 22 insertions(+), 7 deletions(-)
+
+diff --git a/components/courses/CourseViewer.tsx b/components/courses/CourseViewer.tsx
+index c1386e8..c3aa996 100644
+--- a/components/courses/CourseViewer.tsx
++++ b/components/courses/CourseViewer.tsx
+@@ -64,6 +64,13 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
+   ]
+ 
+   useEffect(() => {
++    console.log('[CourseViewer] 🔄 useEffect EXECUTADO', { 
++      userId: user?.id, 
++      initialized, 
++      loading,
++      userName: user?.name 
++    })
++    
+     // APENAS carregar se user existe e não foi inicializado
+     if (!user?.id) {
+       console.log('[CourseViewer] ⏸️ Aguardando usuário. User atual:', user)
+@@ -86,20 +93,28 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
+       }
+     }, 10000) // 10 segundos timeout de segurança
+     
+-    // Debounce para evitar múltiplas chamadas
+-    const timeoutId = setTimeout(() => {
+-      loadCourses().finally(() => {
+-        clearTimeout(safetyTimeoutId)
+-      })
+-    }, 300) // Aumentar debounce para 300ms
++    // REMOVER DEBOUNCE - Chamar imediatamente
++    console.log('[CourseViewer] 📞 Chamando loadCourses() imediatamente')
++    loadCourses().finally(() => {
++      clearTimeout(safetyTimeoutId)
++    })
+     
+     return () => {
+-      clearTimeout(timeoutId)
+       clearTimeout(safetyTimeoutId)
+     }
+   }, [user?.id, initialized]) // Adicionar initialized como dependência
++  
++  // Reset initialized quando o usuário muda
++  useEffect(() => {
++    if (user?.id) {
++      console.log('[CourseViewer] 🔄 Usuário mudou, resetando initialized')
++      setInitialized(false)
++    }
++  }, [user?.id])
+ 
+   const loadCourses = async (forceReload = false) => {
++    console.log('[CourseViewer] 🎬 loadCourses() CHAMADO!', { forceReload, loading, initialized })
++    
+     // EVITAR múltiplas chamadas simultâneas
+     if (loading) {
+       console.log('[CourseViewer] ⏸️ JÁ CARREGANDO - Ignorando')
+-- 
+2.48.1
+
+
+From e0474b33bc56b939f0a9d7d17fe0aecb0e34a7d2 Mon Sep 17 00:00:00 2001
+From: Cursor Agent <cursoragent@cursor.com>
+Date: Wed, 23 Jul 2025 18:25:01 +0000
+Subject: [PATCH 2/2] Checkpoint before follow-up message
+
+---
+ components/courses/CourseViewer.tsx | 49 ++++++++++-------------------
+ 1 file changed, 16 insertions(+), 33 deletions(-)
+
+diff --git a/components/courses/CourseViewer.tsx b/components/courses/CourseViewer.tsx
+index c3aa996..b041ac8 100644
+--- a/components/courses/CourseViewer.tsx
++++ b/components/courses/CourseViewer.tsx
+@@ -35,7 +35,6 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
+ 
+   const [courses, setCourses] = useState<Course[]>([])
+   const [loading, setLoading] = useState(false) // Iniciar como false
+-  const [initialized, setInitialized] = useState(false) // Controle de inicialização
+   const [searchTerm, setSearchTerm] = useState('')
+   const [selectedDepartment, setSelectedDepartment] = useState<Department | 'All'>('All')
+   const [selectedType, setSelectedType] = useState<CourseType | 'All'>('All')
+@@ -66,54 +65,38 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
+   useEffect(() => {
+     console.log('[CourseViewer] 🔄 useEffect EXECUTADO', { 
+       userId: user?.id, 
+-      initialized, 
+       loading,
+-      userName: user?.name 
++      userName: user?.name,
++      coursesLength: courses.length
+     })
+     
+-    // APENAS carregar se user existe e não foi inicializado
++    // APENAS carregar se user existe e ainda não tem cursos
+     if (!user?.id) {
+       console.log('[CourseViewer] ⏸️ Aguardando usuário. User atual:', user)
+       return
+     }
+     
+-    if (initialized) {
+-      console.log('[CourseViewer] ✅ Já inicializado')
++    // Se já tem cursos, não recarregar
++    if (courses.length > 0) {
++      console.log('[CourseViewer] ✅ Já tem cursos carregados:', courses.length)
+       return
+     }
+     
+-    console.log('[CourseViewer] 🚀 Iniciando carregamento para usuário:', user.name, 'Role:', user.role, 'ID:', user.id)
+-    setInitialized(true)
++    // Se já está carregando, não chamar novamente
++    if (loading) {
++      console.log('[CourseViewer] ⏸️ Já está carregando')
++      return
++    }
+     
+-    // Timeout de segurança para forçar finalização do loading
+-    const safetyTimeoutId = setTimeout(() => {
+-      if (loading) {
+-        console.log('[CourseViewer] ⚠️ Timeout de segurança - forçando finalização')
+-        setLoading(false)
+-      }
+-    }, 10000) // 10 segundos timeout de segurança
++    console.log('[CourseViewer] 🚀 Iniciando carregamento para usuário:', user.name, 'Role:', user.role, 'ID:', user.id)
+     
+-    // REMOVER DEBOUNCE - Chamar imediatamente
++    // CHAMAR IMEDIATAMENTE - sem timeouts complicados
+     console.log('[CourseViewer] 📞 Chamando loadCourses() imediatamente')
+-    loadCourses().finally(() => {
+-      clearTimeout(safetyTimeoutId)
+-    })
+-    
+-    return () => {
+-      clearTimeout(safetyTimeoutId)
+-    }
+-  }, [user?.id, initialized]) // Adicionar initialized como dependência
+-  
+-  // Reset initialized quando o usuário muda
+-  useEffect(() => {
+-    if (user?.id) {
+-      console.log('[CourseViewer] 🔄 Usuário mudou, resetando initialized')
+-      setInitialized(false)
+-    }
+-  }, [user?.id])
++    loadCourses()
++  }, [user?.id, courses.length, loading])
+ 
+   const loadCourses = async (forceReload = false) => {
+-    console.log('[CourseViewer] 🎬 loadCourses() CHAMADO!', { forceReload, loading, initialized })
++    console.log('[CourseViewer] 🎬 loadCourses() CHAMADO!', { forceReload, loading, coursesLength: courses.length })
+     
+     // EVITAR múltiplas chamadas simultâneas
+     if (loading) {
+-- 
+2.48.1
+
