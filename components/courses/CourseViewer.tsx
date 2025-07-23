@@ -111,14 +111,16 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
     setConnectionError(false)
 
     try {
-      // Sistema de emergência OTIMIZADO
-      const result = await emergencyGetCourses(user.id, user.role === 'admin')
+      // USAR CHAVE CONSISTENTE - admin usa 'admin', usuários normais usam user.id
+      const queryUserId = user.role === 'admin' ? 'admin' : user.id
+      console.log(`[CourseViewer] 🔑 Usando cache key: courses-${queryUserId}-${user.role === 'admin'}`)
+      const result = await emergencyGetCourses(queryUserId, user.role === 'admin')
       
       if (result.error) {
         console.error('[CourseViewer] ❌ Erro após todas as tentativas:', result.error)
         
         // Verificar se há dados no cache mesmo expirados
-        const expiredCache = cacheHelpers.getCourses(user.id)
+        const expiredCache = cacheHelpers.getCourses(queryUserId)
         if (expiredCache) {
           console.log('[CourseViewer] 🔄 Usando cache expirado como fallback')
           setCourses(expiredCache as Course[])
@@ -136,6 +138,7 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
       }
 
       const courses = result.data || []
+      console.log(`[CourseViewer] 📚 Cursos recebidos:`, courses.length, courses.map(c => ({ id: c.id, title: c.title })))
       setCourses(courses)
       
       // Carregar aulas e progresso em background se há cursos
@@ -214,7 +217,7 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
 
   // Memoizar filtros para evitar recálculos desnecessários
   const filteredCourses = useMemo(() => {
-    return courses.filter(course => {
+    const filtered = courses.filter(course => {
       const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
@@ -227,6 +230,12 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
 
       return matchesSearch && matchesDepartment && matchesType
     })
+    
+    if (renderCount.current % 5 === 1) { // Log apenas a cada 5 renders
+      console.log(`[CourseViewer] 🔍 Cursos filtrados:`, filtered.length, 'de', courses.length, 'total')
+    }
+    
+    return filtered
   }, [courses, searchTerm, selectedDepartment, selectedType, user?.department])
 
   const getTypeColor = useCallback((type: CourseType) => {
