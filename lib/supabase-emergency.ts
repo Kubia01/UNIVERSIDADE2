@@ -7,12 +7,12 @@ import { supabase } from './supabase'
 import { appCache } from './cache'
 import { coursesCache, videosCache } from './ultra-cache'
 
-// Configurações ULTRA AGRESSIVAS
+// Configurações BALANCEADAS para suportar mais dados
 const RETRY_CONFIG = {
   maxRetries: 1, // APENAS 1 tentativa
   baseDelay: 0, // SEM delay
   maxDelay: 0,
-  timeoutMs: 2000 // 2 segundos timeout apenas
+  timeoutMs: 5000 // 5 segundos timeout para suportar mais dados
 }
 
 // Função para delay com backoff exponencial
@@ -91,14 +91,14 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
           .from('courses')
           .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, created_at, updated_at')
           .order('created_at', { ascending: false })
-          .limit(20) // LIMITAR resultados
+          .limit(100) // AUMENTAR limite para suportar mais cursos
       } else {
         // Para usuários normais, buscar TODOS os cursos por enquanto (simplificar)
         return await supabase
           .from('courses')
           .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, created_at, updated_at')
           .order('created_at', { ascending: false })
-          .limit(10) // MENOS resultados para usuários
+          .limit(50) // AUMENTAR limite para usuários também
       }
     },
     cacheKey,
@@ -130,7 +130,7 @@ export const emergencyGetVideos = async (courseId: string) => {
         .select('id, course_id, title, description, order_index, duration, video_url, type, created_at, updated_at')
         .eq('course_id', courseId)
         .order('order_index', { ascending: true })
-        .limit(50) // LIMITAR vídeos
+        .limit(200) // AUMENTAR limite para suportar mais vídeos por curso
     },
     cacheKey,
     2 * 60 * 60 * 1000 // 2 HORAS de cache

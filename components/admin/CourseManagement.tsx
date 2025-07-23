@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { Search, Plus, Edit, Trash2, Play, Users, BookOpen, Clock, Award, Filter, X } from 'lucide-react'
 import { supabase, Course, User, Department, CourseType } from '@/lib/supabase'
 import { emergencyGetCourses, emergencyGetVideos } from '@/lib/supabase-emergency'
+import { lazyVideoLoader } from '@/lib/lazy-loader'
 import CourseCreation from './CourseCreation'
 import LessonEditModal from './LessonEditModal'
 
@@ -60,9 +61,9 @@ const CourseManagement: React.FC = () => {
         console.log('✅ Cursos carregados:', courses.length)
         setCourses(courses)
         
-        // Carregar aulas em BACKGROUND (não bloquear UI)
+        // Carregar aulas em BACKGROUND usando lazy loader
         if (courses.length > 0) {
-          loadAllCourseVideos(courses).catch(console.error)
+          loadAllCourseVideosLazy(courses).catch(console.error)
         }
       }
     } catch (error) {
@@ -73,28 +74,23 @@ const CourseManagement: React.FC = () => {
     }
   }
 
-  const loadAllCourseVideos = async (courses: Course[]) => {
-    console.log('⚡ [CourseManagement] Carregando vídeos em background')
+  const loadAllCourseVideosLazy = async (courses: Course[]) => {
+    console.log('⚡ [CourseManagement] Carregando TODOS os vídeos com lazy loader')
     try {
-      const videosMap: {[key: string]: any[]} = {}
+      const courseIds = courses.map(course => course.id)
       
-      // Carregar apenas primeiros 5 cursos para não sobrecarregar
-      const limitedCourses = courses.slice(0, 5)
-      
-      for (const course of limitedCourses) {
-        const result = await emergencyGetVideos(course.id)
-        
-        if (result.error) {
-          console.error(`Erro ao carregar aulas do curso ${course.id}:`, result.error)
-          videosMap[course.id] = []
-        } else {
-          videosMap[course.id] = result.data || []
-        }
-      }
+      // Usar lazy loader para carregar todos os vídeos de forma otimizada
+      const videosMap = await lazyVideoLoader.loadMultipleCourses(courseIds, 4) // Batch de 4
       
       setCourseVideos(videosMap)
+      console.log('✅ Todos os vídeos carregados via lazy loader:', Object.keys(videosMap).length, 'cursos')
+      
+      // Log estatísticas
+      const stats = lazyVideoLoader.getStats()
+      console.log('📊 Lazy Loader Stats:', stats)
+      
     } catch (error) {
-      console.error('Erro ao carregar aulas dos cursos:', error)
+      console.error('Erro ao carregar vídeos com lazy loader:', error)
     }
   }
 
