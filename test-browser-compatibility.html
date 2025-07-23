@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Compatibilidade - Fontes e Cores</title>
+    <style>
+        /* Reset básico */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            background: #f8fafc;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .browser-info {
+            background: #1e293b;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            font-family: monospace;
+        }
+
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .test-section h2 {
+            color: #1e293b;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        /* Testes de peso de fonte */
+        .font-test {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .font-sample {
+            padding: 15px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .weight-100 { font-weight: 100; }
+        .weight-200 { font-weight: 200; }
+        .weight-300 { font-weight: 300; }
+        .weight-400 { font-weight: 400; }
+        .weight-500 { font-weight: 500; }
+        .weight-600 { font-weight: 600; }
+        .weight-700 { font-weight: 700; }
+        .weight-800 { font-weight: 800; }
+        .weight-900 { font-weight: 900; }
+
+        /* Testes de tamanho */
+        .size-test {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .size-xs { font-size: 0.75rem; }
+        .size-sm { font-size: 0.875rem; }
+        .size-base { font-size: 1rem; }
+        .size-lg { font-size: 1.125rem; }
+        .size-xl { font-size: 1.25rem; }
+        .size-2xl { font-size: 1.5rem; }
+
+        /* Testes de cor */
+        .color-test {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+        }
+
+        .color-sample {
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        .text-black { color: #000000; background: #f8fafc; }
+        .text-gray-900 { color: #0f172a; background: #f8fafc; }
+        .text-gray-700 { color: #334155; background: #f8fafc; }
+        .text-gray-600 { color: #475569; background: #f8fafc; }
+        .text-gray-500 { color: #64748b; background: #f8fafc; }
+        .text-gray-400 { color: #94a3b8; background: #f8fafc; }
+
+        .text-white { color: #ffffff; background: #1e293b; }
+        .text-gray-100 { color: #f1f5f9; background: #1e293b; }
+        .text-gray-200 { color: #e2e8f0; background: #1e293b; }
+        .text-gray-300 { color: #cbd5e1; background: #1e293b; }
+
+        /* Modo escuro */
+        .dark-mode {
+            background: #1e293b;
+            color: #f1f5f9;
+        }
+
+        .dark-mode .container {
+            background: #334155;
+            color: #f1f5f9;
+        }
+
+        .dark-mode .test-section {
+            border-color: #475569;
+            background: #475569;
+        }
+
+        .dark-mode .font-sample {
+            border-color: #64748b;
+            background: #64748b;
+        }
+
+        /* Controles */
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+
+        /* Ajustes específicos por navegador */
+        .browser-firefox .font-sample {
+            font-weight: 500;
+        }
+
+        .browser-safari .font-sample {
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .browser-chrome.high-dpi .font-sample {
+            text-shadow: 0 0 0.5px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button class="btn btn-primary" onclick="toggleDarkMode()">🌙 Modo Escuro</button>
+        <button class="btn btn-secondary" onclick="applyBrowserFixes()">🔧 Aplicar Ajustes</button>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🧪 Teste de Compatibilidade</h1>
+            <p>Verificação de fontes e cores em diferentes navegadores</p>
+        </div>
+
+        <div class="browser-info" id="browserInfo">
+            <div>🌐 Detectando navegador...</div>
+        </div>
+
+        <div class="test-section">
+            <h2>📝 Teste de Pesos de Fonte</h2>
+            <div class="font-test">
+                <div class="font-sample weight-100">Peso 100 - Thin<br><small>Este texto deve ser legível</small></div>
+                <div class="font-sample weight-200">Peso 200 - Extra Light<br><small>Este texto deve ser legível</small></div>
+                <div class="font-sample weight-300">Peso 300 - Light<br><small>Este texto deve ser legível</small></div>
+                <div class="font-sample weight-400">Peso 400 - Normal<br><small>Este texto deve ser legível</small></div>
+                <div class="font-sample weight-500">Peso 500 - Medium<br><small>Este texto deve ser legível</small></div>
+                <div class="font-sample weight-600">Peso 600 - Semi Bold<br><small>Este texto deve ser legível</small></div>
+                <div class="font-sample weight-700">Peso 700 - Bold<br><small>Este texto deve ser legível</small></div>
+                <div class="font-sample weight-800">Peso 800 - Extra Bold<br><small>Este texto deve ser legível</small></div>
+                <div class="font-sample weight-900">Peso 900 - Black<br><small>Este texto deve ser legível</small></div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📏 Teste de Tamanhos</h2>
+            <div class="size-test">
+                <div class="size-xs">Tamanho XS (12px) - Este texto deve ser legível em todos os navegadores</div>
+                <div class="size-sm">Tamanho SM (14px) - Este texto deve ser legível em todos os navegadores</div>
+                <div class="size-base">Tamanho Base (16px) - Este texto deve ser legível em todos os navegadores</div>
+                <div class="size-lg">Tamanho LG (18px) - Este texto deve ser legível em todos os navegadores</div>
+                <div class="size-xl">Tamanho XL (20px) - Este texto deve ser legível em todos os navegadores</div>
+                <div class="size-2xl">Tamanho 2XL (24px) - Este texto deve ser legível em todos os navegadores</div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎨 Teste de Cores - Modo Claro</h2>
+            <div class="color-test">
+                <div class="color-sample text-black">Preto (#000000)<br><small>Contraste máximo</small></div>
+                <div class="color-sample text-gray-900">Cinza 900 (#0f172a)<br><small>Quase preto</small></div>
+                <div class="color-sample text-gray-700">Cinza 700 (#334155)<br><small>Texto principal</small></div>
+                <div class="color-sample text-gray-600">Cinza 600 (#475569)<br><small>Texto secundário</small></div>
+                <div class="color-sample text-gray-500">Cinza 500 (#64748b)<br><small>Texto auxiliar</small></div>
+                <div class="color-sample text-gray-400">Cinza 400 (#94a3b8)<br><small>Texto desabilitado</small></div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🌙 Teste de Cores - Modo Escuro</h2>
+            <div class="color-test">
+                <div class="color-sample text-white">Branco (#ffffff)<br><small>Contraste máximo</small></div>
+                <div class="color-sample text-gray-100">Cinza 100 (#f1f5f9)<br><small>Quase branco</small></div>
+                <div class="color-sample text-gray-200">Cinza 200 (#e2e8f0)<br><small>Texto principal</small></div>
+                <div class="color-sample text-gray-300">Cinza 300 (#cbd5e1)<br><small>Texto secundário</small></div>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔍 Problemas Comuns</h2>
+            <div style="display: grid; gap: 15px;">
+                <div style="padding: 15px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px;">
+                    <strong>Firefox:</strong> Fontes podem aparecer mais finas que outros navegadores
+                </div>
+                <div style="padding: 15px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px;">
+                    <strong>Safari:</strong> Renderização diferente no macOS vs iOS
+                </div>
+                <div style="padding: 15px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px;">
+                    <strong>Chrome:</strong> Pode variar em telas High DPI
+                </div>
+                <div style="padding: 15px; background: #fefce8; border: 1px solid #fde047; border-radius: 6px;">
+                    <strong>Edge:</strong> Similar ao Chrome mas com pequenas diferenças
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Detectar navegador
+        function detectBrowser() {
+            const userAgent = navigator.userAgent;
+            let browserName = 'unknown';
+            let version = '0';
+
+            if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) {
+                browserName = 'Chrome';
+                const match = userAgent.match(/Chrome\/(\d+)/);
+                version = match ? match[1] : '0';
+            } else if (userAgent.includes('Firefox')) {
+                browserName = 'Firefox';
+                const match = userAgent.match(/Firefox\/(\d+)/);
+                version = match ? match[1] : '0';
+            } else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
+                browserName = 'Safari';
+                const match = userAgent.match(/Version\/(\d+)/);
+                version = match ? match[1] : '0';
+            } else if (userAgent.includes('Edg')) {
+                browserName = 'Edge';
+                const match = userAgent.match(/Edg\/(\d+)/);
+                version = match ? match[1] : '0';
+            }
+
+            return { name: browserName, version, userAgent };
+        }
+
+        // Aplicar informações do navegador
+        function updateBrowserInfo() {
+            const browser = detectBrowser();
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isHighDPI = window.devicePixelRatio > 1;
+
+            document.getElementById('browserInfo').innerHTML = `
+                <div>🌐 Navegador: ${browser.name} v${browser.version}</div>
+                <div>📱 Mobile: ${isMobile ? 'Sim' : 'Não'}</div>
+                <div>🖥️ High DPI: ${isHighDPI ? 'Sim' : 'Não'} (${window.devicePixelRatio}x)</div>
+                <div>📐 Resolução: ${window.screen.width}x${window.screen.height}</div>
+                <div>🎨 Cores: ${window.screen.colorDepth} bits</div>
+            `;
+
+            // Adicionar classe do navegador
+            document.body.classList.add(`browser-${browser.name.toLowerCase()}`);
+            if (isHighDPI) {
+                document.body.classList.add('high-dpi');
+            }
+        }
+
+        // Alternar modo escuro
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+
+        // Aplicar ajustes específicos do navegador
+        function applyBrowserFixes() {
+            const browser = detectBrowser();
+            
+            switch(browser.name.toLowerCase()) {
+                case 'firefox':
+                    // Aumentar peso das fontes no Firefox
+                    document.querySelectorAll('.weight-300').forEach(el => {
+                        el.style.fontWeight = '400';
+                    });
+                    document.querySelectorAll('.weight-400').forEach(el => {
+                        el.style.fontWeight = '500';
+                    });
+                    break;
+                
+                case 'safari':
+                    // Aplicar antialiasing no Safari
+                    document.body.style.webkitFontSmoothing = 'antialiased';
+                    break;
+                
+                case 'chrome':
+                    if (window.devicePixelRatio > 1) {
+                        // Adicionar sombra sutil para High DPI
+                        document.querySelectorAll('.font-sample').forEach(el => {
+                            el.style.textShadow = '0 0 0.5px rgba(0,0,0,0.1)';
+                        });
+                    }
+                    break;
+            }
+            
+            alert(`Ajustes aplicados para ${browser.name}!`);
+        }
+
+        // Inicializar quando a página carregar
+        document.addEventListener('DOMContentLoaded', updateBrowserInfo);
+    </script>
+</body>
+</html>

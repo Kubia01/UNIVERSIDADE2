@@ -1,0 +1,286 @@
+/* 
+ * CSS de Compatibilidade entre Navegadores
+ * Ajustes específicos para melhorar legibilidade em diferentes navegadores
+ */
+
+/* Variáveis CSS dinâmicas (definidas pelo JavaScript) */
+:root {
+  /* Pesos de fonte adaptáveis */
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* Ajustes de texto */
+  --text-shadow: none;
+  --letter-spacing: 0;
+  --line-height: 1.5;
+  --contrast-boost: 0;
+  
+  /* Cores base com melhor contraste */
+  --text-primary: rgb(17, 24, 39);
+  --text-secondary: rgb(75, 85, 99);
+  --text-muted: rgb(107, 114, 128);
+  
+  /* Cores para modo escuro */
+  --text-primary-dark: rgb(249, 250, 251);
+  --text-secondary-dark: rgb(209, 213, 219);
+  --text-muted-dark: rgb(156, 163, 175);
+}
+
+/* Aplicar variáveis de peso de fonte */
+.font-light {
+  font-weight: var(--font-weight-light) !important;
+}
+
+.font-normal {
+  font-weight: var(--font-weight-normal) !important;
+}
+
+.font-medium {
+  font-weight: var(--font-weight-medium) !important;
+}
+
+.font-semibold {
+  font-weight: var(--font-weight-semibold) !important;
+}
+
+.font-bold {
+  font-weight: var(--font-weight-bold) !important;
+}
+
+/* Aplicar sombra de texto quando necessário */
+.text-with-shadow {
+  text-shadow: var(--text-shadow);
+}
+
+/* Aplicar espaçamento de letras */
+.text-spaced {
+  letter-spacing: var(--letter-spacing);
+}
+
+/* Melhorar contraste geral */
+.text-gray-900 {
+  color: var(--text-primary);
+}
+
+.text-gray-600 {
+  color: var(--text-secondary);
+}
+
+.text-gray-500 {
+  color: var(--text-muted);
+}
+
+.dark .text-gray-900 {
+  color: var(--text-primary-dark);
+}
+
+.dark .text-gray-600 {
+  color: var(--text-secondary-dark);
+}
+
+.dark .text-gray-500 {
+  color: var(--text-muted-dark);
+}
+
+/* Ajustes específicos por navegador */
+
+/* Firefox - fontes mais pesadas */
+.browser-firefox {
+  --text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.browser-firefox .font-light {
+  font-weight: var(--font-weight-normal) !important;
+}
+
+.browser-firefox .font-normal {
+  font-weight: var(--font-weight-medium) !important;
+}
+
+.browser-firefox .text-sm,
+.browser-firefox .text-xs {
+  text-shadow: var(--text-shadow);
+}
+
+/* Safari - ajustes para renderização macOS/iOS */
+.browser-safari {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.browser-safari .text-gray-400,
+.browser-safari .text-gray-500 {
+  color: rgb(107, 114, 128) !important;
+}
+
+.browser-safari.dark .text-gray-400,
+.browser-safari.dark .text-gray-500 {
+  color: rgb(156, 163, 175) !important;
+}
+
+/* Edge - ajustes específicos */
+.browser-edge {
+  text-rendering: optimizeLegibility;
+}
+
+.browser-edge .text-xs {
+  font-size: 0.75rem !important;
+  line-height: 1.2 !important;
+}
+
+/* Chrome - ajustes para High DPI */
+.browser-chrome.is-high-dpi .text-sm {
+  font-weight: var(--font-weight-medium);
+}
+
+.browser-chrome.is-high-dpi .font-light {
+  font-weight: var(--font-weight-normal) !important;
+}
+
+/* Ajustes para dispositivos móveis */
+.is-mobile {
+  --line-height: 1.6;
+}
+
+.is-mobile .text-xs {
+  font-size: 0.8rem !important;
+  line-height: 1.4 !important;
+}
+
+.is-mobile .text-sm {
+  font-size: 0.9rem !important;
+  line-height: 1.5 !important;
+}
+
+.is-mobile .font-light {
+  font-weight: var(--font-weight-normal) !important;
+}
+
+/* Ajustes para telas High DPI */
+.is-high-dpi .text-xs,
+.is-high-dpi .text-sm {
+  text-shadow: var(--text-shadow);
+}
+
+/* Melhorias específicas para elementos do sistema */
+
+/* Botões */
+button,
+.btn {
+  font-weight: var(--font-weight-medium) !important;
+  letter-spacing: var(--letter-spacing);
+}
+
+/* Títulos */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: var(--font-weight-bold) !important;
+  text-shadow: var(--text-shadow);
+  line-height: var(--line-height);
+}
+
+/* Texto de formulários */
+input, textarea, select {
+  font-weight: var(--font-weight-normal) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  font-weight: var(--font-weight-light) !important;
+  color: var(--text-muted) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--text-muted-dark) !important;
+}
+
+/* Labels */
+label {
+  font-weight: var(--font-weight-medium) !important;
+}
+
+/* Cards e containers */
+.card h3,
+.card h4 {
+  font-weight: var(--font-weight-semibold) !important;
+}
+
+.card p {
+  line-height: var(--line-height);
+}
+
+/* Navegação */
+nav a,
+.nav-link {
+  font-weight: var(--font-weight-medium) !important;
+  text-shadow: var(--text-shadow);
+}
+
+/* Tabelas */
+th {
+  font-weight: var(--font-weight-semibold) !important;
+}
+
+td {
+  font-weight: var(--font-weight-normal) !important;
+}
+
+/* Alertas e notificações */
+.alert,
+.notification {
+  font-weight: var(--font-weight-medium) !important;
+}
+
+/* Melhorias para contraste */
+.high-contrast {
+  --text-primary: rgb(0, 0, 0);
+  --text-secondary: rgb(55, 65, 81);
+  --text-muted: rgb(75, 85, 99);
+}
+
+.high-contrast.dark {
+  --text-primary-dark: rgb(255, 255, 255);
+  --text-secondary-dark: rgb(229, 231, 235);
+  --text-muted-dark: rgb(209, 213, 219);
+}
+
+/* Animações suaves para transições de fonte */
+* {
+  transition: font-weight 0.2s ease, text-shadow 0.2s ease;
+}
+
+/* Desabilitar transições durante ajustes iniciais */
+.browser-adjusting * {
+  transition: none !important;
+}
+
+/* Fallbacks para navegadores muito antigos */
+@supports not (font-variation-settings: normal) {
+  .font-light { font-weight: 300 !important; }
+  .font-normal { font-weight: 400 !important; }
+  .font-medium { font-weight: 500 !important; }
+  .font-semibold { font-weight: 600 !important; }
+  .font-bold { font-weight: 700 !important; }
+}
+
+/* Melhorias para acessibilidade */
+@media (prefers-contrast: high) {
+  :root {
+    --text-primary: rgb(0, 0, 0);
+    --text-secondary: rgb(55, 65, 81);
+    --text-muted: rgb(75, 85, 99);
+    --text-primary-dark: rgb(255, 255, 255);
+    --text-secondary-dark: rgb(229, 231, 235);
+    --text-muted-dark: rgb(209, 213, 219);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
