@@ -125,11 +125,26 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
     try {
       // Validar tipo e tamanho do arquivo
       const maxSize = 500 * 1024 * 1024 // 500MB
+      const supabaseLimit = 50 * 1024 * 1024 // 50MB (limite real do Supabase free tier)
       const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov', 'video/mkv']
       
       if (file.size > maxSize) {
         alert('❌ Arquivo muito grande! Tamanho máximo: 500MB')
         return
+      }
+      
+      if (file.size > supabaseLimit) {
+        const sizeMB = (file.size / 1024 / 1024).toFixed(1)
+        const shouldContinue = confirm(`⚠️ Arquivo grande (${sizeMB}MB)!
+
+O Supabase free tier tem limite de 50MB por arquivo.
+Se você tem um plano pago, pode continuar.
+
+Deseja tentar fazer o upload mesmo assim?`)
+        
+        if (!shouldContinue) {
+          return
+        }
       }
       
               if (!allowedTypes.includes(file.type)) {
@@ -142,23 +157,23 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
       
       console.log('📤 Iniciando upload do arquivo:', file.name, 'Tamanho:', (file.size / 1024 / 1024).toFixed(2) + 'MB')
       
-      // Tentar criar o bucket se não existir
+      // Verificar se o bucket existe
       const { data: buckets } = await supabase.storage.listBuckets()
       const bucketExists = buckets?.some(bucket => bucket.name === 'course-videos')
       
       if (!bucketExists) {
-        console.log('📁 Criando bucket course-videos...')
-        const { error: bucketError } = await supabase.storage.createBucket('course-videos', {
-          public: true,
-          allowedMimeTypes: allowedTypes,
-          fileSizeLimit: maxSize
-        })
-        
-        if (bucketError) {
-          console.error('Erro ao criar bucket:', bucketError)
-          alert('❌ Erro na configuração de armazenamento. Entre em contato com o administrador.')
-          return
-        }
+        console.error('❌ Bucket course-videos não existe')
+        alert(`❌ Bucket de armazenamento não configurado!
+
+Siga estes passos:
+1. Acesse o Supabase Dashboard
+2. Vá para Storage → Create Bucket
+3. Nome: course-videos
+4. Marque como "Public bucket"
+5. File size limit: 524288000 (500MB)
+
+Ou consulte o arquivo create-storage-bucket.md para instruções detalhadas.`)
+        return
       }
       
       // Simular progresso para arquivos grandes
