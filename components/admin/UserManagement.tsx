@@ -108,32 +108,18 @@ const UserManagement: React.FC = () => {
 
       console.log('Criando usuário...')
       
-      // Primeiro, criar o usuário na autenticação do Supabase
-      const { data: authData, error: authError } = await createUserWithAuth(newUser.email, newUser.password)
+      // Criar usuário usando a API route (que cria tanto auth quanto perfil)
+      const { data: userData, error: userError } = await createUserWithAuth(
+        newUser.email, 
+        newUser.password, 
+        newUser.name, 
+        newUser.department, 
+        newUser.role
+      )
 
-      if (authError || !authData?.user) {
-        console.error('Erro ao criar usuário na autenticação:', authError)
-        throw authError || new Error('Usuário não foi criado corretamente')
-      }
-
-      // Depois, criar o perfil usando o ID do usuário autenticado
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([{
-          id: authData.user.id,
-          name: newUser.name,
-          email: newUser.email,
-          department: newUser.department,
-          role: newUser.role,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }])
-
-      if (profileError) {
-        console.error('Erro ao criar perfil:', profileError)
-        // Se falhou ao criar perfil, tentar remover o usuário da auth
-        await deleteUserFromAuth(authData.user.id)
-        throw profileError
+      if (userError || !userData) {
+        console.error('Erro ao criar usuário:', userError)
+        throw userError || new Error('Usuário não foi criado corretamente')
       }
 
       console.log('Usuário criado com sucesso')
