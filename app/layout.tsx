@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import '../styles/browser-compatibility.css'
-import BrowserCompatibility from '@/components/BrowserCompatibility'
+import '../styles/browser-compatibility-lite.css'
+// import BrowserCompatibility from '@/components/BrowserCompatibility' // Removido - muito pesado
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,11 +27,18 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={inter.className}>
-        <BrowserCompatibility>
-          <div className="min-h-screen bg-gray-50">
-            {children}
-          </div>
-        </BrowserCompatibility>
+        <div className="min-h-screen bg-gray-50">
+          {children}
+        </div>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // Compatibilidade leve inline
+            if (navigator.userAgent.includes('Firefox')) {
+              document.documentElement.style.setProperty('--font-weight-light', '400');
+              document.documentElement.style.setProperty('--font-weight-normal', '500');
+            }
+          `
+        }} />
       </body>
     </html>
   )

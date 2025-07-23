@@ -73,13 +73,24 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    checkUser()
+    // Evitar múltiplas execuções simultâneas
+    if (window.__userLoadInProgress) return
+    window.__userLoadInProgress = true
+    
+    checkUser().finally(() => {
+      window.__userLoadInProgress = false
+    })
   }, [])
 
   // Recarregar dados quando funcionário selecionado mudar ou quando houver trigger
   useEffect(() => {
     if (user) {
-      loadDashboardData(user)
+      // Debounce para evitar múltiplas chamadas rápidas
+      const timeoutId = setTimeout(() => {
+        loadDashboardData(user)
+      }, 100)
+      
+      return () => clearTimeout(timeoutId)
     }
   }, [selectedEmployee, refreshTrigger]) // Adicionado refreshTrigger para forçar reload
 

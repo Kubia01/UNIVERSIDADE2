@@ -1,0 +1,48 @@
+/* CSS de Compatibilidade Leve - Versão Otimizada */
+
+/* Apenas ajustes críticos para legibilidade */
+:root {
+  --text-primary: rgb(17, 24, 39);
+  --text-secondary: rgb(75, 85, 99);
+  --text-muted: rgb(107, 114, 128);
+}
+
+/* Firefox - fontes mais pesadas apenas onde necessário */
+body:has(.browser-firefox) .font-light {
+  font-weight: 400 !important;
+}
+
+body:has(.browser-firefox) .font-normal {
+  font-weight: 500 !important;
+}
+
+/* Safari - antialiasing básico */
+body:has(.browser-safari) {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Melhorar contraste para textos pequenos */
+.text-xs,
+.text-sm {
+  color: var(--text-primary);
+}
+
+/* Modo escuro - apenas essencial */
+.dark .text-xs,
+.dark .text-sm {
+  color: rgb(249, 250, 251);
+}
+
+/* Remover transições desnecessárias */
+* {
+  transition: none !important;
+}
+
+/* Apenas para elementos interativos */
+button,
+a,
+input,
+select,
+textarea {
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
+}
