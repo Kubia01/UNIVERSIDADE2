@@ -64,6 +64,13 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
   ]
 
   useEffect(() => {
+    console.log('[CourseViewer] 🔄 useEffect EXECUTADO', { 
+      userId: user?.id, 
+      initialized, 
+      loading,
+      userName: user?.name 
+    })
+    
     // APENAS carregar se user existe e não foi inicializado
     if (!user?.id) {
       console.log('[CourseViewer] ⏸️ Aguardando usuário. User atual:', user)
@@ -86,20 +93,28 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
       }
     }, 10000) // 10 segundos timeout de segurança
     
-    // Debounce para evitar múltiplas chamadas
-    const timeoutId = setTimeout(() => {
-      loadCourses().finally(() => {
-        clearTimeout(safetyTimeoutId)
-      })
-    }, 300) // Aumentar debounce para 300ms
+    // REMOVER DEBOUNCE - Chamar imediatamente
+    console.log('[CourseViewer] 📞 Chamando loadCourses() imediatamente')
+    loadCourses().finally(() => {
+      clearTimeout(safetyTimeoutId)
+    })
     
     return () => {
-      clearTimeout(timeoutId)
       clearTimeout(safetyTimeoutId)
     }
   }, [user?.id, initialized]) // Adicionar initialized como dependência
+  
+  // Reset initialized quando o usuário muda
+  useEffect(() => {
+    if (user?.id) {
+      console.log('[CourseViewer] 🔄 Usuário mudou, resetando initialized')
+      setInitialized(false)
+    }
+  }, [user?.id])
 
   const loadCourses = async (forceReload = false) => {
+    console.log('[CourseViewer] 🎬 loadCourses() CHAMADO!', { forceReload, loading, initialized })
+    
     // EVITAR múltiplas chamadas simultâneas
     if (loading) {
       console.log('[CourseViewer] ⏸️ JÁ CARREGANDO - Ignorando')
