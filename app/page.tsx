@@ -252,10 +252,22 @@ export default function HomePage() {
       setStats(cachedDashboard.stats)
       setRecentCourses(cachedDashboard.recentCourses)
       setDashboardProgress(cachedDashboard.progress)
-      if (cachedDashboard.employees) {
+      
+      // Se há employees no cache E é admin, usar do cache e retornar
+      if (cachedDashboard.employees && cachedDashboard.employees.length > 0 && currentUser?.role === 'admin') {
+        console.log('📊 [Dashboard] Restaurando employees do cache:', cachedDashboard.employees.length)
         setEmployees(cachedDashboard.employees)
+        return
       }
-      return
+      
+      // Se não há employees no cache mas é admin, continuar para carregar employees
+      if (currentUser?.role === 'admin') {
+        console.log('📊 [Dashboard] Cache sem employees, continuando para carregar usuários')
+        // Continuar execução para carregar employees
+      } else {
+        // Se não é admin, pode retornar
+        return
+      }
     }
 
     try {
@@ -672,6 +684,10 @@ export default function HomePage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Filtrar por colaborador:
                 </label>
+                {(() => {
+                  console.log('🔍 [Dashboard] Renderizando dropdown. Employees:', employees.length, employees.map(e => ({ id: e.id, name: e.name })))
+                  return null
+                })()}
                 <select
                   value={selectedEmployee?.id || ''}
                   onChange={(e) => {
