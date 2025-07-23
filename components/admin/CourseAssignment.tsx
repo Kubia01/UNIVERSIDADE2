@@ -106,18 +106,55 @@ const CourseAssignment: React.FC = () => {
     setAvailableCourses(available)
   }
 
+  const ensureTableExists = async () => {
+    // Verificar se a tabela existe tentando fazer uma consulta simples
+    const { error: testError } = await supabase
+      .from('course_assignments')
+      .select('id')
+      .limit(1)
+    
+    if (testError && testError.code === '42P01') {
+      // Tabela não existe - mostrar instruções para o admin
+      console.log('⚠️ Tabela course_assignments não existe. Execute o SQL no Supabase Dashboard:')
+      console.log(`
+        CREATE TABLE course_assignments (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+          course_id UUID NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+          assigned_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+          assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          UNIQUE(user_id, course_id)
+        );
+        
+        ALTER TABLE course_assignments ENABLE ROW LEVEL SECURITY;
+        
+        CREATE POLICY "Users can view their own course assignments" ON course_assignments
+          FOR SELECT USING (auth.uid() = user_id);
+          
+        CREATE POLICY "Admins can manage all course assignments" ON course_assignments
+          FOR ALL USING (
+            EXISTS (
+              SELECT 1 FROM profiles 
+              WHERE profiles.id = auth.uid() 
+              AND profiles.role = 'admin'
+            )
+          );
+      `)
+      
+      throw new Error('Tabela course_assignments não existe. Verifique o console para instruções de criação.')
+    }
+  }
+
   const assignCourse = async (courseId: string) => {
     if (!selectedUser) return
 
     try {
       setSaving(true)
 
-      // Primeiro, tentar criar a tabela se não existir
-      const { error: createTableError } = await supabase.rpc('create_course_assignments_table')
-      
-      if (createTableError && !createTableError.message.includes('already exists')) {
-        console.warn('Não foi possível criar a tabela automaticamente:', createTableError.message)
-      }
+      // Garantir que a tabela existe
+      await ensureTableExists()
 
       const { data: currentUser } = await supabase.auth.getUser()
       
