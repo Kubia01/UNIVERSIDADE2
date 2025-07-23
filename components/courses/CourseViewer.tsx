@@ -6,6 +6,7 @@ import { supabase, Course, Department, CourseType, User } from '@/lib/supabase'
 import { cacheHelpers } from '@/lib/cache'
 import { CourseCardSkeleton, FastLoading } from '@/components/ui/SkeletonLoader'
 import { emergencyGetCourses, emergencyGetVideos, useFallbackData } from '@/lib/supabase-emergency'
+import { getOfflineStatus, offlineGetCourses } from '@/lib/offline-mode'
 
 interface CourseViewerProps {
   user: User
@@ -77,6 +78,18 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
     setConnectionError(false)
 
     try {
+      // VERIFICAR MODO OFFLINE PRIMEIRO
+      const { isOffline, reason } = getOfflineStatus()
+      
+      if (isOffline) {
+        console.log('[CourseViewer] 📱 MODO OFFLINE - Carregando dados locais')
+        const result: any = await offlineGetCourses(user.id, user.role === 'admin')
+        setCourses(result.data as Course[])
+        setLoading(false)
+        setConnectionError(true) // Mostrar banner de offline
+        return
+      }
+      
       // Usar sistema de emergência com retry e fallback
       const result = await emergencyGetCourses(user.id, user.role === 'admin')
       
