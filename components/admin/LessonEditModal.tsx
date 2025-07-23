@@ -31,6 +31,7 @@ const LessonEditModal: React.FC<LessonEditModalProps> = ({
   
   const [contentInputType, setContentInputType] = useState<'url' | 'upload'>('url')
   const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [saving, setSaving] = useState(false)
 
   const lessonTypes = [
@@ -68,15 +69,15 @@ const LessonEditModal: React.FC<LessonEditModalProps> = ({
 
     try {
       // Validar tipo de arquivo
-      const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov']
+      const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov', 'video/mkv']
       if (!allowedTypes.includes(file.type)) {
-        alert('❌ Tipo de arquivo não suportado! Use: MP4, WebM, OGG, AVI ou MOV')
+        alert('❌ Tipo de arquivo não suportado! Use: MP4, WebM, OGG, AVI, MOV ou MKV')
         return
       }
 
-      // Validar tamanho (100MB max)
-      if (file.size > 100 * 1024 * 1024) {
-        alert('❌ Arquivo muito grande! Tamanho máximo: 100MB')
+      // Validar tamanho (500MB max)
+      if (file.size > 500 * 1024 * 1024) {
+        alert('❌ Arquivo muito grande! Tamanho máximo: 500MB')
         return
       }
 
@@ -95,7 +96,7 @@ const LessonEditModal: React.FC<LessonEditModalProps> = ({
         const { error: bucketError } = await supabase.storage.createBucket('course-videos', {
           public: true,
           allowedMimeTypes: allowedTypes,
-          fileSizeLimit: 100 * 1024 * 1024
+          fileSizeLimit: 500 * 1024 * 1024
         })
         
         if (bucketError) {
@@ -105,6 +106,9 @@ const LessonEditModal: React.FC<LessonEditModalProps> = ({
         }
       }
       
+      // Simular progresso para arquivos grandes
+      setUploadProgress(10)
+      
       // Upload para o Supabase Storage
       const { data, error } = await supabase.storage
         .from('course-videos')
@@ -112,6 +116,8 @@ const LessonEditModal: React.FC<LessonEditModalProps> = ({
           cacheControl: '3600',
           upsert: false
         })
+      
+      setUploadProgress(90)
 
       if (error) {
         console.error('Erro no upload:', error)
@@ -137,6 +143,8 @@ const LessonEditModal: React.FC<LessonEditModalProps> = ({
         .getPublicUrl(fileName)
 
       // Atualizar o campo de conteúdo com a URL
+      setUploadProgress(100)
+      
       setEditingLesson({
         ...editingLesson,
         video_url: publicUrl
@@ -148,6 +156,7 @@ const LessonEditModal: React.FC<LessonEditModalProps> = ({
       alert('❌ Erro inesperado no upload: ' + error.message)
     } finally {
       setUploadingVideo(false)
+      setUploadProgress(0)
     }
   }
 
@@ -312,7 +321,22 @@ const LessonEditModal: React.FC<LessonEditModalProps> = ({
                     {uploadingVideo ? (
                       <div className="flex flex-col items-center">
                         <div className="loading-spinner w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-2"></div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">Enviando vídeo...</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Enviando vídeo...</p>
+                        <div className="w-full max-w-xs">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-gray-500">Progresso</span>
+                            <span className="text-xs text-blue-600">{uploadProgress}%</span>
+                          </div>
+                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                              style={{ width: `${uploadProgress}%` }}
+                            ></div>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Arquivos grandes podem levar alguns minutos
+                          </p>
+                        </div>
                       </div>
                     ) : (
                       <>
