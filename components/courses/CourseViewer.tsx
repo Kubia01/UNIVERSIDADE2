@@ -35,7 +35,6 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
 
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(false) // Iniciar como false
-  const [initialized, setInitialized] = useState(false) // Controle de inicialização
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState<Department | 'All'>('All')
   const [selectedType, setSelectedType] = useState<CourseType | 'All'>('All')
@@ -66,54 +65,38 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
   useEffect(() => {
     console.log('[CourseViewer] 🔄 useEffect EXECUTADO', { 
       userId: user?.id, 
-      initialized, 
       loading,
-      userName: user?.name 
+      userName: user?.name,
+      coursesLength: courses.length
     })
     
-    // APENAS carregar se user existe e não foi inicializado
+    // APENAS carregar se user existe e ainda não tem cursos
     if (!user?.id) {
       console.log('[CourseViewer] ⏸️ Aguardando usuário. User atual:', user)
       return
     }
     
-    if (initialized) {
-      console.log('[CourseViewer] ✅ Já inicializado')
+    // Se já tem cursos, não recarregar
+    if (courses.length > 0) {
+      console.log('[CourseViewer] ✅ Já tem cursos carregados:', courses.length)
+      return
+    }
+    
+    // Se já está carregando, não chamar novamente
+    if (loading) {
+      console.log('[CourseViewer] ⏸️ Já está carregando')
       return
     }
     
     console.log('[CourseViewer] 🚀 Iniciando carregamento para usuário:', user.name, 'Role:', user.role, 'ID:', user.id)
-    setInitialized(true)
     
-    // Timeout de segurança para forçar finalização do loading
-    const safetyTimeoutId = setTimeout(() => {
-      if (loading) {
-        console.log('[CourseViewer] ⚠️ Timeout de segurança - forçando finalização')
-        setLoading(false)
-      }
-    }, 10000) // 10 segundos timeout de segurança
-    
-    // REMOVER DEBOUNCE - Chamar imediatamente
+    // CHAMAR IMEDIATAMENTE - sem timeouts complicados
     console.log('[CourseViewer] 📞 Chamando loadCourses() imediatamente')
-    loadCourses().finally(() => {
-      clearTimeout(safetyTimeoutId)
-    })
-    
-    return () => {
-      clearTimeout(safetyTimeoutId)
-    }
-  }, [user?.id, initialized]) // Adicionar initialized como dependência
-  
-  // Reset initialized quando o usuário muda
-  useEffect(() => {
-    if (user?.id) {
-      console.log('[CourseViewer] 🔄 Usuário mudou, resetando initialized')
-      setInitialized(false)
-    }
-  }, [user?.id])
+    loadCourses()
+  }, [user?.id, courses.length, loading])
 
   const loadCourses = async (forceReload = false) => {
-    console.log('[CourseViewer] 🎬 loadCourses() CHAMADO!', { forceReload, loading, initialized })
+    console.log('[CourseViewer] 🎬 loadCourses() CHAMADO!', { forceReload, loading, coursesLength: courses.length })
     
     // EVITAR múltiplas chamadas simultâneas
     if (loading) {
