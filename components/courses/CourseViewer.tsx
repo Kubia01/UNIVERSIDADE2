@@ -5,14 +5,21 @@ import { Search, BookOpen, Play, Clock, Award, Filter, ChevronRight, Users, Buil
 import { supabase, Course, Department, CourseType, User } from '@/lib/supabase'
 import { cacheHelpers } from '@/lib/cache'
 import { CourseCardSkeleton, FastLoading } from '@/components/ui/SkeletonLoader'
+import { emergencyGetCourses, emergencyGetVideos, useFallbackData } from '@/lib/supabase-emergency'
 
 interface CourseViewerProps {
   user: User
   onCourseSelect: (course: Course) => void
 }
 
-const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => {
-  console.log('[CourseViewer] Renderizando CourseViewer. user:', user, 'onCourseSelect:', onCourseSelect)
+const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSelect }) => {
+  // Reduzir logs excessivos
+  const renderCount = React.useRef(0)
+  renderCount.current++
+  
+  if (renderCount.current % 5 === 1) { // Log apenas a cada 5 renders
+    console.log('[CourseViewer] Render #', renderCount.current, 'user:', user?.name)
+  }
   
   // Se não há usuário, mostrar loading ou erro
   if (!user) {
@@ -65,74 +72,43 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
   }, [user.id]) // Adicionar dependência do user.id para recarregar quando usuário mudar
 
   const loadCourses = async () => {
-    // Verificar cache primeiro
-    const cachedCourses = cacheHelpers.getCourses(user.id) as Course[] | null
-    if (cachedCourses) {
-      console.log('[CourseViewer] Cursos carregados do cache:', cachedCourses.length)
-      setCourses(cachedCourses)
-      setLoading(false)
-      return
-    }
+    console.log('[CourseViewer] 🚀 Iniciando carregamento de cursos...')
+    setLoading(true)
+    setConnectionError(false)
 
     try {
-      let data, error
-
-      if (user.role === 'admin') {
-        // Admins podem ver todos os cursos
-        const result = await supabase
-          .from('courses')
-          .select('*')
-          .eq('is_published', true)
-          .order('created_at', { ascending: false })
+      // Usar sistema de emergência com retry e fallback
+      const result = await emergencyGetCourses(user.id, user.role === 'admin')
+      
+      if (result.error) {
+        console.error('[CourseViewer] ❌ Erro após todas as tentativas:', result.error)
         
-        data = result.data
-        error = result.error
-      } else {
-        // Usuários comuns veem apenas cursos atribuídos a eles
-        const result = await supabase
-          .from('courses')
-          .select(`
-            *,
-            course_assignments!inner(user_id)
-          `)
-          .eq('is_published', true)
-          .eq('course_assignments.user_id', user.id)
-          .order('created_at', { ascending: false })
-        
-        data = result.data
-        error = result.error
-        
-        console.log('[CourseViewer] Cursos atribuídos para usuário:', user.id, data)
-      }
-
-      if (error) {
-        console.error('[CourseViewer] Erro ao carregar cursos:', error)
-        
-        // Tratamento específico para diferentes tipos de erro
-        const errorMessage = error instanceof Error ? error.message : String(error)
-        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS')) {
-          console.error('[CourseViewer] Problema de conectividade ou CORS detectado')
-          // Definir cursos vazios e mostrar mensagem específica
-          setCourses([])
-          setConnectionError(true)
+        // Verificar se há dados no cache mesmo expirados
+        const expiredCache = cacheHelpers.getCourses(user.id)
+        if (expiredCache) {
+          console.log('[CourseViewer] 🔄 Usando cache expirado como fallback')
+          setCourses(expiredCache as Course[])
+          setLoading(false)
           return
         }
         
-        throw error
+        // Usar dados de fallback como último recurso
+        console.log('[CourseViewer] 🚨 Usando dados de fallback')
+        const fallbackCourses = useFallbackData('courses') as Course[]
+        setCourses(fallbackCourses)
+        setConnectionError(true)
+        setLoading(false)
+        return
       }
-      console.log('[CourseViewer] Cursos carregados:', data)
-      const courses = data || []
+
+      const courses = result.data || []
       setCourses(courses)
       
-      // Salvar no cache
-      cacheHelpers.setCourses(user.id, courses)
-      
-      // Carregar aulas para cada curso apenas se há cursos
+      // Carregar aulas e progresso em background se há cursos
       if (courses.length > 0) {
-        await loadCourseLessons(courses)
-        // Carregar progresso dos cursos
-        const courseIds = courses.map(course => course.id)
-        await loadCourseProgress(courseIds)
+        // Não aguardar essas operações para não bloquear a UI
+        loadCourseLessons(courses).catch(console.error)
+        loadCourseProgress(courses.map(course => course.id)).catch(console.error)
       }
     } catch (error) {
       console.error('Erro ao carregar cursos:', error)
@@ -559,6 +535,6 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
       </div>
     </div>
   )
-}
+})
 
 export default CourseViewer
