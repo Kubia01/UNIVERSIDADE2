@@ -5,14 +5,24 @@
 
 import { supabase } from './supabase'
 import { appCache } from './cache'
+import { 
+  getOfflineStatus, 
+  autoDetectOfflineMode,
+  offlineGetCourses,
+  offlineGetVideos,
+  offlineGetUserProgress
+} from './offline-mode'
 
-// Configurações de retry
+// Configurações de retry (mais agressivas)
 const RETRY_CONFIG = {
-  maxRetries: 3,
-  baseDelay: 1000,
-  maxDelay: 5000,
-  timeoutMs: 10000 // 10 segundos timeout
+  maxRetries: 2, // Reduzido para 2 tentativas
+  baseDelay: 800,
+  maxDelay: 2000,
+  timeoutMs: 5000 // 5 segundos timeout (reduzido)
 }
+
+// Detector automático de modo offline
+const offlineDetector = autoDetectOfflineMode()
 
 // Função para delay com backoff exponencial
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -29,6 +39,13 @@ export const emergencyQuery = async <T>(
   cacheKey?: string,
   cacheTTL?: number
 ): Promise<{ data: T | null; error: any }> => {
+  
+  // VERIFICAR MODO OFFLINE PRIMEIRO
+  const { isOffline } = getOfflineStatus()
+  if (isOffline) {
+    console.log('📱 MODO OFFLINE ATIVO - Pulando query do Supabase')
+    return { data: null, error: new Error('Modo offline ativo') }
+  }
   
   // Verificar cache primeiro se disponível
   if (cacheKey) {
@@ -71,6 +88,9 @@ export const emergencyQuery = async <T>(
           console.log(`💾 Dados salvos no cache: ${cacheKey}`)
         }
         
+        // Reportar sucesso ao detector
+        offlineDetector.reportSuccess()
+        
         console.log(`✅ Query bem-sucedida na tentativa ${attempt}`)
         return result
       }
@@ -78,6 +98,13 @@ export const emergencyQuery = async <T>(
     } catch (error) {
       lastError = error
       console.error(`❌ Erro inesperado na tentativa ${attempt}:`, error)
+      
+      // Reportar erro ao detector
+      const shouldActivateOffline = offlineDetector.reportError(error)
+      if (shouldActivateOffline) {
+        console.log('🚨 MODO OFFLINE ATIVADO AUTOMATICAMENTE')
+        return { data: null, error: new Error('Modo offline ativado automaticamente') }
+      }
       
       if (attempt < RETRY_CONFIG.maxRetries) {
         const delayMs = calculateDelay(attempt)
