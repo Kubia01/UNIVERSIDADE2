@@ -213,13 +213,38 @@ export default function HomePage() {
     try {
       console.log('Carregando dados do dashboard para usuário:', currentUser.email, 'role:', currentUser.role, 'id:', currentUser.id)
       
-      // Buscar cursos disponíveis
-      const { data: courses, error: coursesError } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('is_published', true)
-        .order('created_at', { ascending: false })
-        .limit(6)
+      // Buscar cursos disponíveis (filtrado por atribuição para usuários não-admin)
+      let courses, coursesError
+      
+      if (currentUser.role === 'admin') {
+        // Admins podem ver todos os cursos
+        const result = await supabase
+          .from('courses')
+          .select('*')
+          .eq('is_published', true)
+          .order('created_at', { ascending: false })
+          .limit(6)
+        
+        courses = result.data
+        coursesError = result.error
+      } else {
+        // Usuários comuns veem apenas cursos atribuídos a eles
+        const result = await supabase
+          .from('courses')
+          .select(`
+            *,
+            course_assignments!inner(user_id)
+          `)
+          .eq('is_published', true)
+          .eq('course_assignments.user_id', currentUser.id)
+          .order('created_at', { ascending: false })
+          .limit(6)
+        
+        courses = result.data
+        coursesError = result.error
+        
+        console.log('Cursos atribuídos no dashboard para usuário:', currentUser.id, courses)
+      }
 
       if (coursesError) {
         console.error('Erro ao carregar cursos:', coursesError)
