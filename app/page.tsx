@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { supabase, User, Course, Lesson, Department } from '@/lib/supabase'
 import { cacheHelpers } from '@/lib/cache'
+import { emergencyGetVideos, useFallbackData } from '@/lib/supabase-emergency'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import UserManagement from '@/components/admin/UserManagement'
@@ -19,6 +20,7 @@ import CertificateViewer from '@/components/certificates/CertificateViewer'
 import AdminSettings from '@/components/admin/AdminSettings'
 import { PlayCircle, BookOpen, Users, Trophy, Clock, Star } from 'lucide-react'
 import { DashboardSkeleton, FastLoading } from '@/components/ui/SkeletonLoader'
+import { ConnectionStatus, useConnectionStatus } from '@/components/ui/ConnectionStatus'
 
 // Declaração global para evitar múltiplas execuções
 declare global {
@@ -58,6 +60,9 @@ export default function HomePage() {
   const [dashboardProgress, setDashboardProgress] = useState<{[key: string]: number}>({})
   const [refreshTrigger, setRefreshTrigger] = useState(0)
   const router = useRouter()
+  
+  // Status de conexão
+  const connectionStatus = useConnectionStatus()
 
   // Função para formatar tempo de estudo
   const formatStudyTime = (minutes: number) => {
@@ -514,25 +519,57 @@ export default function HomePage() {
   }
 
   const handleCourseSelect = async (course: Course) => {
-    console.log('[page.tsx] handleCourseSelect chamado para:', course)
+    console.log('[page.tsx] 🚀 handleCourseSelect chamado para:', course.title)
+    
     try {
-      const { data: videos, error } = await supabase
-        .from('videos')
-        .select('*')
-        .eq('course_id', course.id)
-        .order('order_index', { ascending: true })
-      if (error) {
-        console.error('Erro ao carregar aulas do curso:', error)
+      // Usar sistema de emergência para carregar vídeos
+      const result = await emergencyGetVideos(course.id)
+      
+      let videos = result.data || []
+      
+      if (result.error) {
+        console.error('[page.tsx] ❌ Erro ao carregar aulas:', result.error)
+        
+        // Usar dados de fallback se disponível
+        const fallbackVideos = useFallbackData('videos', course.id)
+        videos = fallbackVideos as any[]
+        
+        if (videos.length === 0) {
+          alert('⚠️ Não foi possível carregar as aulas. Tente novamente em alguns instantes.')
+          return
+        }
       }
-      const lessons = (videos || []).map((v: any) => ({ ...v, content: v.video_url }))
-      console.log('[page.tsx] Aulas carregadas:', lessons)
+      
+      const lessons = videos.map((v: any) => ({ ...v, content: v.video_url }))
+      console.log('[page.tsx] ✅ Aulas carregadas:', lessons.length)
+      
       const courseWithLessons = { ...course, lessons }
       setSelectedCourse(courseWithLessons)
       setShowCourseModule(true)
       setSelectedLesson(null)
+      
     } catch (err) {
-      console.error('[page.tsx] Erro em handleCourseSelect:', err)
-      alert('Erro inesperado ao buscar aulas do curso.')
+      console.error('[page.tsx] 💥 Erro crítico em handleCourseSelect:', err)
+      
+      // Fallback final - mostrar curso mesmo sem aulas
+      const courseWithEmptyLessons = { 
+        ...course, 
+        lessons: [{
+          id: 'temp-lesson',
+          course_id: course.id,
+          title: 'Carregando aulas...',
+          description: 'As aulas estão sendo carregadas. Tente recarregar em alguns instantes.',
+          order_index: 1,
+          duration: 0,
+          content: '',
+          type: 'video' as const,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }]
+      }
+      setSelectedCourse(courseWithEmptyLessons)
+      setShowCourseModule(true)
+      setSelectedLesson(null)
     }
   }
 
@@ -914,6 +951,17 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Banner de status de conexão */}
+      <ConnectionStatus
+        isConnected={connectionStatus.isOnline}
+        hasError={connectionStatus.hasAnyError}
+        errorMessage={connectionStatus.lastError}
+        onRetry={() => {
+          connectionStatus.clearError()
+          setRefreshTrigger(prev => prev + 1)
+        }}
+      />
+      
       <Sidebar 
         activeView={activeView}
         onViewChange={(view) => {
