@@ -6,7 +6,6 @@ import { getCurrentUser } from '@/lib/auth'
 import { supabase, User, Course, Lesson, Department } from '@/lib/supabase'
 import { cacheHelpers } from '@/lib/cache'
 import { emergencyGetVideos, useFallbackData } from '@/lib/supabase-emergency'
-import { getOfflineStatus, offlineGetVideos, offlineGetDashboardStats } from '@/lib/offline-mode'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import UserManagement from '@/components/admin/UserManagement'
@@ -22,7 +21,6 @@ import AdminSettings from '@/components/admin/AdminSettings'
 import { PlayCircle, BookOpen, Users, Trophy, Clock, Star } from 'lucide-react'
 import { DashboardSkeleton, FastLoading } from '@/components/ui/SkeletonLoader'
 import { ConnectionStatus, useConnectionStatus } from '@/components/ui/ConnectionStatus'
-import { OfflineToggle } from '@/components/ui/OfflineToggle'
 
 // Declaração global para evitar múltiplas execuções
 declare global {
@@ -241,22 +239,10 @@ export default function HomePage() {
       return
     }
 
-    // VERIFICAR MODO OFFLINE PRIMEIRO
-    const { isOffline } = getOfflineStatus()
-    
-    if (isOffline) {
-      console.log('📱 MODO OFFLINE - Carregando dashboard local')
-      const offlineStats = offlineGetDashboardStats(currentUser.id)
-      setStats(offlineStats)
-      setRecentCourses([]) // Sem cursos recentes no modo offline
-      setDashboardProgress({})
-      return
-    }
-
-    // Verificar cache primeiro
+    // Verificar cache PRIMEIRO - PRIORIDADE MÁXIMA
     const cachedDashboard = cacheHelpers.getDashboard(currentUser.id) as any
     if (cachedDashboard) {
-      console.log('Dashboard carregado do cache')
+      console.log('⚡ DASHBOARD CACHE HIT')
       setStats(cachedDashboard.stats)
       setRecentCourses(cachedDashboard.recentCourses)
       setDashboardProgress(cachedDashboard.progress)
@@ -533,20 +519,11 @@ export default function HomePage() {
   }
 
   const handleCourseSelect = async (course: Course) => {
-    console.log('[page.tsx] 🚀 handleCourseSelect chamado para:', course.title)
+    console.log('[page.tsx] ⚡ CARREGAMENTO ULTRA RÁPIDO:', course.title)
     
     try {
-      // VERIFICAR MODO OFFLINE PRIMEIRO
-      const { isOffline } = getOfflineStatus()
-      
-      let result: any
-      if (isOffline) {
-        console.log('[page.tsx] 📱 MODO OFFLINE - Carregando vídeos locais')
-        result = await offlineGetVideos(course.id)
-      } else {
-        // Usar sistema de emergência para carregar vídeos
-        result = await emergencyGetVideos(course.id)
-      }
+      // Sistema de emergência OTIMIZADO
+      const result = await emergencyGetVideos(course.id)
       
       let videos = result.data || []
       
@@ -1009,9 +986,6 @@ export default function HomePage() {
           {renderMainContent()}
         </main>
       </div>
-      
-      {/* Toggle de modo offline */}
-      <OfflineToggle />
     </div>
   )
 }

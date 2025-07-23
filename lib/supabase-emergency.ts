@@ -5,24 +5,14 @@
 
 import { supabase } from './supabase'
 import { appCache } from './cache'
-import { 
-  getOfflineStatus, 
-  autoDetectOfflineMode,
-  offlineGetCourses,
-  offlineGetVideos,
-  offlineGetUserProgress
-} from './offline-mode'
 
-// Configurações de retry (mais agressivas)
+// Configurações ULTRA AGRESSIVAS
 const RETRY_CONFIG = {
-  maxRetries: 2, // Reduzido para 2 tentativas
-  baseDelay: 800,
-  maxDelay: 2000,
-  timeoutMs: 5000 // 5 segundos timeout (reduzido)
+  maxRetries: 1, // APENAS 1 tentativa
+  baseDelay: 0, // SEM delay
+  maxDelay: 0,
+  timeoutMs: 2000 // 2 segundos timeout apenas
 }
-
-// Detector automático de modo offline
-const offlineDetector = autoDetectOfflineMode()
 
 // Função para delay com backoff exponencial
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -40,126 +30,88 @@ export const emergencyQuery = async <T>(
   cacheTTL?: number
 ): Promise<{ data: T | null; error: any }> => {
   
-  // VERIFICAR MODO OFFLINE PRIMEIRO
-  const { isOffline } = getOfflineStatus()
-  if (isOffline) {
-    console.log('📱 MODO OFFLINE ATIVO - Pulando query do Supabase')
-    return { data: null, error: new Error('Modo offline ativo') }
-  }
-  
-  // Verificar cache primeiro se disponível
+  // SEMPRE verificar cache primeiro - PRIORIDADE MÁXIMA
   if (cacheKey) {
     const cachedData = appCache.get(cacheKey) as T | null
     if (cachedData) {
-      console.log(`🔄 Dados carregados do cache: ${cacheKey}`)
+      console.log(`⚡ CACHE HIT: ${cacheKey}`)
       return { data: cachedData, error: null }
     }
   }
 
-  let lastError: any = null
-  
-  for (let attempt = 1; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
-    try {
-      console.log(`🔄 Tentativa ${attempt}/${RETRY_CONFIG.maxRetries} para query`)
-      
-      // Criar promise com timeout
-      const queryPromise = queryFn()
-      const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) => {
-        setTimeout(() => reject(new Error('Query timeout')), RETRY_CONFIG.timeoutMs)
-      })
-      
-      const result = await Promise.race([queryPromise, timeoutPromise])
-      
-      if (result.error) {
-        lastError = result.error
-        console.error(`❌ Erro na tentativa ${attempt}:`, result.error)
-        
-        // Se não é o último retry, aguardar antes de tentar novamente
-        if (attempt < RETRY_CONFIG.maxRetries) {
-          const delayMs = calculateDelay(attempt)
-          console.log(`⏳ Aguardando ${delayMs}ms antes da próxima tentativa...`)
-          await delay(delayMs)
-          continue
-        }
-      } else {
-        // Sucesso - salvar no cache se disponível
-        if (cacheKey && result.data) {
-          appCache.set(cacheKey, result.data, cacheTTL)
-          console.log(`💾 Dados salvos no cache: ${cacheKey}`)
-        }
-        
-        // Reportar sucesso ao detector
-        offlineDetector.reportSuccess()
-        
-        console.log(`✅ Query bem-sucedida na tentativa ${attempt}`)
-        return result
-      }
-      
-    } catch (error) {
-      lastError = error
-      console.error(`❌ Erro inesperado na tentativa ${attempt}:`, error)
-      
-      // Reportar erro ao detector
-      const shouldActivateOffline = offlineDetector.reportError(error)
-      if (shouldActivateOffline) {
-        console.log('🚨 MODO OFFLINE ATIVADO AUTOMATICAMENTE')
-        return { data: null, error: new Error('Modo offline ativado automaticamente') }
-      }
-      
-      if (attempt < RETRY_CONFIG.maxRetries) {
-        const delayMs = calculateDelay(attempt)
-        console.log(`⏳ Aguardando ${delayMs}ms antes da próxima tentativa...`)
-        await delay(delayMs)
-      }
+  // APENAS 1 TENTATIVA - SEM RETRY
+  try {
+    console.log(`⚡ TENTATIVA ÚNICA - Timeout: ${RETRY_CONFIG.timeoutMs}ms`)
+    
+    // Criar promise com timeout AGRESSIVO
+    const queryPromise = queryFn()
+    const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) => {
+      setTimeout(() => reject(new Error('Query timeout')), RETRY_CONFIG.timeoutMs)
+    })
+    
+    const result = await Promise.race([queryPromise, timeoutPromise])
+    
+    if (result.error) {
+      console.error(`❌ Erro na query:`, result.error.message || result.error)
+      return { data: null, error: result.error }
     }
+    
+    // Sucesso - salvar no cache IMEDIATAMENTE
+    if (cacheKey && result.data) {
+      appCache.set(cacheKey, result.data, cacheTTL || 30 * 60 * 1000) // 30 min default
+      console.log(`💾 CACHE SAVED: ${cacheKey}`)
+    }
+    
+    console.log(`✅ SUCCESS em ${RETRY_CONFIG.timeoutMs}ms`)
+    return result
+    
+  } catch (error) {
+    console.error(`💥 FALHA TOTAL:`, (error as Error).message || error)
+    return { data: null, error: error }
   }
-  
-  console.error(`💥 Todas as tentativas falharam. Último erro:`, lastError)
-  return { data: null, error: lastError }
 }
 
 // Funções específicas para queries comuns
 export const emergencyGetCourses = async (userId: string, isAdmin: boolean = false) => {
-  const cacheKey = `emergency-courses-${userId}-${isAdmin}`
+  const cacheKey = `courses-${userId}-${isAdmin}`
   
   return emergencyQuery(
     async () => {
+      // Query SIMPLIFICADA - sem JOINs desnecessários
       if (isAdmin) {
         return await supabase
           .from('courses')
-          .select('*')
-          .eq('is_published', true)
+          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, created_at, updated_at')
           .order('created_at', { ascending: false })
+          .limit(20) // LIMITAR resultados
       } else {
+        // Para usuários normais, buscar TODOS os cursos por enquanto (simplificar)
         return await supabase
           .from('courses')
-          .select(`
-            *,
-            course_assignments!inner(user_id)
-          `)
-          .eq('is_published', true)
-          .eq('course_assignments.user_id', userId)
+          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, created_at, updated_at')
           .order('created_at', { ascending: false })
+          .limit(10) // MENOS resultados para usuários
       }
     },
     cacheKey,
-    5 * 60 * 1000 // 5 minutos cache
+    60 * 60 * 1000 // 1 HORA de cache
   )
 }
 
 export const emergencyGetVideos = async (courseId: string) => {
-  const cacheKey = `emergency-videos-${courseId}`
+  const cacheKey = `videos-${courseId}`
   
   return emergencyQuery(
     async () => {
       return await supabase
         .from('videos')
-        .select('*')
+        .select('id, course_id, title, description, order_index, duration, video_url, type, created_at, updated_at')
         .eq('course_id', courseId)
         .order('order_index', { ascending: true })
+        .limit(50) // LIMITAR vídeos
     },
     cacheKey,
-    10 * 60 * 1000 // 10 minutos cache
+    2 * 60 * 60 * 1000 // 2 HORAS de cache
   )
 }
 
