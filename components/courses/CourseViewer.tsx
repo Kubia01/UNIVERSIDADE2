@@ -114,7 +114,7 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
       if (courses.length > 0) {
         // Não aguardar essas operações para não bloquear a UI
         loadCourseLessons(courses).catch(console.error)
-        loadCourseProgress(courses.map(course => course.id)).catch(console.error)
+        loadCourseProgress(courses.map((course: any) => course.id)).catch(console.error)
       }
     } catch (error) {
       console.error('Erro ao carregar cursos:', error)

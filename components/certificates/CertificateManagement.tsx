@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Award, Download, Eye, Calendar, User, BookOpen, Filter } from 'lucide-react'
 import { supabase, Certificate, User as UserType, Course } from '@/lib/supabase'
+import { emergencyGetCourses } from '@/lib/supabase-emergency'
 
 interface CertificateWithDetails extends Certificate {
   user_name?: string
@@ -41,28 +42,22 @@ const CertificateManagement: React.FC = () => {
   }
 
   const loadCourses = async () => {
+    console.log('⚡ [CertificateManagement] CARREGAMENTO ULTRA RÁPIDO')
     try {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('id, title')
-        .eq('is_published', true)
-
-      if (error) throw error
-      setCourses((data || []).map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        description: '',
-        department: 'HR',
-        type: 'onboarding',
-        duration: 0,
-        instructor: '',
-        is_published: true,
-        is_mandatory: false,
-        created_at: '',
-        updated_at: ''
-      })))
+      // Usar sistema de emergência OTIMIZADO
+      const result = await emergencyGetCourses('admin', true)
+      
+      if (result.error) {
+        console.error('❌ Erro ao carregar cursos:', result.error)
+        setCourses([])
+      } else {
+        const courses = result.data || []
+        console.log('✅ Cursos carregados para certificados:', courses.length)
+        setCourses(courses)
+      }
     } catch (error) {
-      console.error('Erro ao carregar cursos:', error)
+      console.error('💥 Erro crítico ao carregar cursos:', error)
+      setCourses([])
     }
   }
 

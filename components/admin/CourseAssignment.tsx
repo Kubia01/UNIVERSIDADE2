@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Users, BookOpen, Plus, Trash2, Save, Search, Filter, Check, X } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { emergencyGetCourses } from '@/lib/supabase-emergency'
 
 interface User {
   id: string
@@ -60,13 +61,23 @@ const CourseAssignment: React.FC = () => {
 
       if (usersError) throw usersError
 
-      // Carregar cursos
-      const { data: coursesData, error: coursesError } = await supabase
-        .from('courses')
-        .select('*')
-        .order('title')
-
-      if (coursesError) throw coursesError
+      // Carregar cursos com sistema otimizado
+      console.log('⚡ [CourseAssignment] CARREGAMENTO ULTRA RÁPIDO')
+      const coursesResult = await emergencyGetCourses('admin', true)
+      
+      if (coursesResult.error) {
+        console.error('❌ Erro ao carregar cursos:', coursesResult.error)
+        setCourses([])
+      } else {
+        const coursesData = coursesResult.data || []
+        console.log('✅ Cursos carregados para atribuição:', coursesData.length)
+        setCourses(coursesData.map((course: any) => ({
+          id: course.id,
+          title: course.title,
+          description: course.description,
+          type: course.type
+        })))
+      }
 
       // Carregar atribuições existentes
       const { data: assignmentsData, error: assignmentsError } = await supabase
@@ -84,7 +95,7 @@ const CourseAssignment: React.FC = () => {
       }
 
       setUsers(usersData || [])
-      setCourses(coursesData || [])
+      // setCourses já foi definido acima no bloco otimizado
 
     } catch (error) {
       console.error('Erro ao carregar dados:', error)

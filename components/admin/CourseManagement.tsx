@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, Edit, Trash2, Play, Users, BookOpen, Clock, Award, Filter, X } from 'lucide-react'
 import { supabase, Course, User, Department, CourseType } from '@/lib/supabase'
+import { emergencyGetCourses, emergencyGetVideos } from '@/lib/supabase-emergency'
 import CourseCreation from './CourseCreation'
 import LessonEditModal from './LessonEditModal'
 
@@ -46,42 +47,48 @@ const CourseManagement: React.FC = () => {
   }, [])
 
   const loadCourses = async () => {
+    console.log('⚡ [CourseManagement] CARREGAMENTO ULTRA RÁPIDO')
     try {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setCourses(data || [])
+      // Usar sistema de emergência OTIMIZADO
+      const result = await emergencyGetCourses('admin', true)
       
-      // Carregar aulas para debug
-      if (data && data.length > 0) {
-        await loadAllCourseVideos(data)
+      if (result.error) {
+        console.error('❌ Erro ao carregar cursos:', result.error)
+        setCourses([])
+      } else {
+        const courses = result.data || []
+        console.log('✅ Cursos carregados:', courses.length)
+        setCourses(courses)
+        
+        // Carregar aulas em BACKGROUND (não bloquear UI)
+        if (courses.length > 0) {
+          loadAllCourseVideos(courses).catch(console.error)
+        }
       }
     } catch (error) {
-      console.error('Erro ao carregar cursos:', error)
+      console.error('💥 Erro crítico ao carregar cursos:', error)
+      setCourses([])
     } finally {
       setLoading(false)
     }
   }
 
   const loadAllCourseVideos = async (courses: Course[]) => {
+    console.log('⚡ [CourseManagement] Carregando vídeos em background')
     try {
       const videosMap: {[key: string]: any[]} = {}
       
-      for (const course of courses) {
-        const { data: videos, error } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('course_id', course.id)
-          .order('order_index', { ascending: true })
+      // Carregar apenas primeiros 5 cursos para não sobrecarregar
+      const limitedCourses = courses.slice(0, 5)
+      
+      for (const course of limitedCourses) {
+        const result = await emergencyGetVideos(course.id)
         
-        if (error) {
-          console.error(`Erro ao carregar aulas do curso ${course.id}:`, error)
+        if (result.error) {
+          console.error(`Erro ao carregar aulas do curso ${course.id}:`, result.error)
           videosMap[course.id] = []
         } else {
-          videosMap[course.id] = videos || []
+          videosMap[course.id] = result.data || []
         }
       }
       

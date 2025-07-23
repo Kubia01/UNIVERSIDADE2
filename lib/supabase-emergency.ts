@@ -5,6 +5,7 @@
 
 import { supabase } from './supabase'
 import { appCache } from './cache'
+import { coursesCache, videosCache } from './ultra-cache'
 
 // Configurações ULTRA AGRESSIVAS
 const RETRY_CONFIG = {
@@ -73,9 +74,16 @@ export const emergencyQuery = async <T>(
 
 // Funções específicas para queries comuns
 export const emergencyGetCourses = async (userId: string, isAdmin: boolean = false) => {
+  // VERIFICAR ULTRA CACHE PRIMEIRO
+  const cachedCourses = coursesCache.get(userId, isAdmin)
+  if (cachedCourses) {
+    console.log('⚡ ULTRA CACHE HIT: Cursos')
+    return { data: cachedCourses, error: null }
+  }
+  
   const cacheKey = `courses-${userId}-${isAdmin}`
   
-  return emergencyQuery(
+  const result = await emergencyQuery(
     async () => {
       // Query SIMPLIFICADA - sem JOINs desnecessários
       if (isAdmin) {
@@ -96,12 +104,26 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
     cacheKey,
     60 * 60 * 1000 // 1 HORA de cache
   )
+  
+  // Salvar no ULTRA CACHE também
+  if (result.data && !result.error) {
+    coursesCache.set(userId, isAdmin, result.data)
+  }
+  
+  return result
 }
 
 export const emergencyGetVideos = async (courseId: string) => {
+  // VERIFICAR ULTRA CACHE PRIMEIRO
+  const cachedVideos = videosCache.get(courseId)
+  if (cachedVideos) {
+    console.log('⚡ ULTRA CACHE HIT: Vídeos')
+    return { data: cachedVideos, error: null }
+  }
+  
   const cacheKey = `videos-${courseId}`
   
-  return emergencyQuery(
+  const result = await emergencyQuery(
     async () => {
       return await supabase
         .from('videos')
@@ -113,6 +135,13 @@ export const emergencyGetVideos = async (courseId: string) => {
     cacheKey,
     2 * 60 * 60 * 1000 // 2 HORAS de cache
   )
+  
+  // Salvar no ULTRA CACHE também
+  if (result.data && !result.error) {
+    videosCache.set(courseId, result.data)
+  }
+  
+  return result
 }
 
 export const emergencyGetUserProgress = async (userId: string, courseIds: string[]) => {
