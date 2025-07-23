@@ -255,37 +255,26 @@ export default function HomePage() {
     try {
       console.log('Carregando dados do dashboard para usuário:', currentUser.email, 'role:', currentUser.role, 'id:', currentUser.id)
       
-      // Buscar cursos disponíveis (filtrado por atribuição para usuários não-admin)
-      let courses, coursesError
+      // USAR SISTEMA DE EMERGÊNCIA PARA CURSOS (ULTRA RÁPIDO)
+      console.log('📊 [Dashboard] Carregando cursos via sistema de emergência')
+      const targetUserId = selectedEmployee?.id || currentUser.id
+      const isTargetAdmin = selectedEmployee ? selectedEmployee.role === 'admin' : currentUser.role === 'admin'
       
-      if (currentUser.role === 'admin') {
-        // Admins podem ver todos os cursos
-        const result = await supabase
-          .from('courses')
-          .select('*')
-          .eq('is_published', true)
-          .order('created_at', { ascending: false })
-          .limit(6)
-        
-        courses = result.data
-        coursesError = result.error
+      const coursesResult = await emergencyGetCourses(
+        isTargetAdmin ? 'admin' : targetUserId, 
+        isTargetAdmin
+      )
+      
+      let courses, coursesError
+      if (coursesResult.error) {
+        console.error('❌ [Dashboard] Erro ao carregar cursos:', coursesResult.error)
+        courses = []
+        coursesError = coursesResult.error
       } else {
-        // Usuários comuns veem apenas cursos atribuídos a eles
-        const result = await supabase
-          .from('courses')
-          .select(`
-            *,
-            course_assignments!inner(user_id)
-          `)
-          .eq('is_published', true)
-          .eq('course_assignments.user_id', currentUser.id)
-          .order('created_at', { ascending: false })
-          .limit(6)
-        
-        courses = result.data
-        coursesError = result.error
-        
-        console.log('Cursos atribuídos no dashboard para usuário:', currentUser.id, courses)
+        // Pegar apenas os 6 mais recentes para o dashboard
+        courses = (coursesResult.data || []).slice(0, 6)
+        coursesError = null
+        console.log('✅ [Dashboard] Cursos carregados via cache:', courses.length)
       }
 
       if (coursesError) {
@@ -301,89 +290,52 @@ export default function HomePage() {
         }
       }
 
-      // Se for admin, carregar lista de funcionários
+      // CARREGAMENTO OTIMIZADO DE USUÁRIOS (ADMINS)
       if (currentUser?.role === 'admin') {
-        console.log('Usuário é admin - carregando lista de funcionários...')
+        console.log('📊 [Dashboard] Admin detectado - carregando usuários via cache')
         
-        try {
-          // Método simplificado: criar lista de usuários mockados para teste
-          const mockUsers: User[] = [
-            {
-              id: currentUser.id,
-              name: currentUser.name || 'Admin Principal',
-              email: currentUser.email,
-              department: (currentUser.department as Department) || 'HR',
-              role: currentUser.role as 'admin' | 'user',
-              avatar: currentUser.avatar || '',
-              created_at: currentUser.created_at || new Date().toISOString(),
-              updated_at: currentUser.updated_at || new Date().toISOString()
-            },
-            {
-              id: 'mock-user-1',
-              name: 'João Silva',
-              email: 'joao@empresa.com',
-              department: 'Engineering' as Department,
-              role: 'user' as 'admin' | 'user',
-              avatar: '',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            },
-            {
-              id: 'mock-user-2',
-              name: 'Maria Santos',
-              email: 'maria@empresa.com',
-              department: 'HR' as Department,
-              role: 'user' as 'admin' | 'user',
-              avatar: '',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          ]
+        // Verificar cache de usuários primeiro
+        const cachedUsers = cacheHelpers.getUsers() as User[]
+        if (cachedUsers && cachedUsers.length > 0) {
+          console.log('⚡ [Dashboard] CACHE HIT: Usuários carregados do cache:', cachedUsers.length)
+          setEmployees(cachedUsers)
+        } else {
+          console.log('📡 [Dashboard] Cache miss - carregando usuários da base')
+          
+          try {
+            const { data: realUsers, error: realError } = await supabase
+              .from('profiles')
+              .select('id, name, email, department, role, avatar, created_at, updated_at')
+              .order('name', { ascending: true })
 
-          console.log('Usando usuários mockados temporariamente:', mockUsers.length)
-          setEmployees(mockUsers)
-
-                    // Tentativa em background para carregar usuários reais (apenas uma vez)
-          if (!window.__userLoadInProgress) {
-            window.__userLoadInProgress = true
-            setTimeout(async () => {
-              console.log('Tentando carregar usuários reais em background...')
+            if (!realError && realUsers && realUsers.length > 0) {
+              const formattedUsers: User[] = realUsers.map((u: any) => ({
+                id: u.id,
+                name: u.name || u.email || 'Usuário sem nome',
+                email: u.email,
+                department: (u.department as Department) || 'HR',
+                role: (u.role as 'admin' | 'user') || 'user',
+                avatar: u.avatar || '',
+                created_at: u.created_at || new Date().toISOString(),
+                updated_at: u.updated_at || new Date().toISOString(),
+              }))
               
-              try {
-                const { data: realUsers, error: realError } = await supabase
-                  .from('profiles')
-                  .select('id, name, email, department, role')
-                  .order('name', { ascending: true })
-
-                if (!realError && realUsers && realUsers.length > 0) {
-                  console.log('Usuários reais carregados com sucesso:', realUsers.length)
-                  setEmployees(realUsers.map((u: any): User => ({
-                    id: u.id,
-                    name: u.name || u.email || 'Usuário sem nome',
-                    email: u.email,
-                    department: (u.department as Department) || 'HR',
-                    role: (u.role as 'admin' | 'user') || 'user',
-                    avatar: u.avatar || '',
-                    created_at: u.created_at || new Date().toISOString(),
-                    updated_at: u.updated_at || new Date().toISOString(),
-                  })))
-                } else {
-                  console.log('Mantendo usuários mockados. Erro:', realError)
-                }
-              } catch (bgError) {
-                console.log('Erro no carregamento em background:', bgError)
-              } finally {
-                window.__userLoadInProgress = false
-              }
-            }, 1000)
+              console.log('✅ [Dashboard] Usuários carregados da base:', formattedUsers.length)
+              setEmployees(formattedUsers)
+              
+              // Salvar no cache por 30 minutos
+              cacheHelpers.setUsers(formattedUsers)
+            } else {
+              console.error('❌ [Dashboard] Erro ao carregar usuários:', realError)
+              setEmployees([])
+            }
+          } catch (error) {
+            console.error('❌ [Dashboard] Erro no carregamento de usuários:', error)
+            setEmployees([])
           }
-
-        } catch (error) {
-          console.error('Erro ao configurar usuários:', error)
-          setEmployees([])
         }
       } else {
-        console.log('Usuário não é admin - não carregando lista de funcionários')
+        console.log('📊 [Dashboard] Usuário não é admin - lista de funcionários não necessária')
         setEmployees([])
       }
 
@@ -493,7 +445,20 @@ export default function HomePage() {
   }
 
   const loadDashboardProgress = async (courseIds: string[], userId: string) => {
+    // Cache key específico para progresso
+    const progressCacheKey = `progress-${userId}-${courseIds.join(',')}`
+    
+    // Verificar cache primeiro
+    const cachedProgress = cacheHelpers.getProgress?.(userId) as {[key: string]: number}
+    if (cachedProgress && Object.keys(cachedProgress).length > 0) {
+      console.log('⚡ [Dashboard] CACHE HIT: Progresso carregado do cache')
+      setDashboardProgress(cachedProgress)
+      return
+    }
+    
     try {
+      console.log('📡 [Dashboard] Carregando progresso da base para:', courseIds.length, 'cursos')
+      
       const { data: progressData, error } = await supabase
         .from('user_progress')
         .select('course_id, progress')
@@ -505,11 +470,21 @@ export default function HomePage() {
         progressData.forEach(p => {
           progressMap[p.course_id] = p.progress || 0
         })
+        
         setDashboardProgress(progressMap)
-        console.log('Progresso do dashboard carregado:', progressMap)
+        console.log('✅ [Dashboard] Progresso carregado:', Object.keys(progressMap).length, 'cursos')
+        
+        // Salvar no cache por 15 minutos
+        if (cacheHelpers.setProgress) {
+          cacheHelpers.setProgress(userId, progressMap)
+        }
+      } else {
+        console.log('📊 [Dashboard] Nenhum progresso encontrado')
+        setDashboardProgress({})
       }
     } catch (error) {
-      console.error('Erro ao carregar progresso do dashboard:', error)
+      console.error('❌ [Dashboard] Erro ao carregar progresso:', error)
+      setDashboardProgress({})
     }
   }
 
