@@ -94,12 +94,15 @@ export default function HomePage() {
     if (user) {
       // Debounce para evitar múltiplas chamadas rápidas
       const timeoutId = setTimeout(() => {
-        loadDashboardData(user)
+        // Usar selectedEmployee se existe, senão usar user
+        const targetUser = selectedEmployee || user
+        console.log('🔄 [Dashboard] Recarregando para:', targetUser.name, 'ID:', targetUser.id)
+        loadDashboardData(targetUser)
       }, 100)
       
       return () => clearTimeout(timeoutId)
     }
-  }, [selectedEmployee, refreshTrigger]) // Adicionado refreshTrigger para forçar reload
+  }, [selectedEmployee, refreshTrigger, user]) // Adicionar user como dependência
 
   const checkUser = async () => {
     try {
@@ -239,10 +242,13 @@ export default function HomePage() {
       return
     }
 
+    // USAR targetUserId para cache específico do usuário
+    const targetUserId = selectedEmployee?.id || currentUser.id
+    
     // Verificar cache PRIMEIRO - PRIORIDADE MÁXIMA
-    const cachedDashboard = cacheHelpers.getDashboard(currentUser.id) as any
+    const cachedDashboard = cacheHelpers.getDashboard(targetUserId) as any
     if (cachedDashboard) {
-      console.log('⚡ DASHBOARD CACHE HIT')
+      console.log('⚡ DASHBOARD CACHE HIT para:', targetUserId)
       setStats(cachedDashboard.stats)
       setRecentCourses(cachedDashboard.recentCourses)
       setDashboardProgress(cachedDashboard.progress)
@@ -256,8 +262,7 @@ export default function HomePage() {
       console.log('Carregando dados do dashboard para usuário:', currentUser.email, 'role:', currentUser.role, 'id:', currentUser.id)
       
       // USAR SISTEMA DE EMERGÊNCIA PARA CURSOS (ULTRA RÁPIDO)
-      console.log('📊 [Dashboard] Carregando cursos via sistema de emergência')
-      const targetUserId = selectedEmployee?.id || currentUser.id
+      console.log('📊 [Dashboard] Carregando cursos via sistema de emergência para:', targetUserId)
       const isTargetAdmin = selectedEmployee ? selectedEmployee.role === 'admin' : currentUser.role === 'admin'
       
       const coursesResult = await emergencyGetCourses(
@@ -283,10 +288,10 @@ export default function HomePage() {
       } else {
         setRecentCourses(courses || [])
         
-        // Carregar progresso dos cursos para o dashboard
+        // Carregar progresso dos cursos para o dashboard (usar targetUserId)
         if (courses && courses.length > 0) {
           const courseIds = courses.map((c: Course) => c.id)
-          loadDashboardProgress(courseIds, currentUser.id)
+          loadDashboardProgress(courseIds, targetUserId)
         }
       }
 
@@ -435,7 +440,7 @@ export default function HomePage() {
         progress: {},
         employees: currentUser?.role === 'admin' ? employees : []
       }
-      cacheHelpers.setDashboard(currentUser.id, dashboardData)
+      cacheHelpers.setDashboard(targetUserId, dashboardData)
       
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
