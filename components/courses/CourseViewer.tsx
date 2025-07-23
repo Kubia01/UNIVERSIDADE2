@@ -34,7 +34,8 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
   }
 
   const [courses, setCourses] = useState<Course[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false) // Iniciar como false
+  const [initialized, setInitialized] = useState(false) // Controle de inicialização
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedDepartment, setSelectedDepartment] = useState<Department | 'All'>('All')
   const [selectedType, setSelectedType] = useState<CourseType | 'All'>('All')
@@ -63,13 +64,40 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
   ]
 
   useEffect(() => {
+    // APENAS carregar se user existe e não foi inicializado
+    if (!user?.id) {
+      console.log('[CourseViewer] ⏸️ Aguardando usuário')
+      return
+    }
+    
+    if (initialized) {
+      console.log('[CourseViewer] ✅ Já inicializado')
+      return
+    }
+    
+    console.log('[CourseViewer] 🚀 Iniciando carregamento para usuário:', user.name)
+    setInitialized(true)
+    
+    // Timeout de segurança para forçar finalização do loading
+    const safetyTimeoutId = setTimeout(() => {
+      if (loading) {
+        console.log('[CourseViewer] ⚠️ Timeout de segurança - forçando finalização')
+        setLoading(false)
+      }
+    }, 10000) // 10 segundos timeout de segurança
+    
     // Debounce para evitar múltiplas chamadas
     const timeoutId = setTimeout(() => {
-      loadCourses()
-    }, 50)
+      loadCourses().finally(() => {
+        clearTimeout(safetyTimeoutId)
+      })
+    }, 300) // Aumentar debounce para 300ms
     
-    return () => clearTimeout(timeoutId)
-  }, [user.id]) // Adicionar dependência do user.id para recarregar quando usuário mudar
+    return () => {
+      clearTimeout(timeoutId)
+      clearTimeout(safetyTimeoutId)
+    }
+  }, [user?.id, initialized]) // Adicionar initialized como dependência
 
   const loadCourses = async () => {
     // EVITAR múltiplas chamadas simultâneas
@@ -134,6 +162,7 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
       }
     } finally {
       setLoading(false)
+      console.log('[CourseViewer] ✅ Carregamento finalizado')
     }
   }
 
@@ -222,7 +251,8 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
     return labels[type]
   }, [])
 
-  if (loading) {
+  // Mostrar loading apenas se não inicializou E não tem cursos
+  if (loading && !initialized && courses.length === 0) {
     return (
       <div className="p-6 space-y-6">
         {/* Header skeleton */}
