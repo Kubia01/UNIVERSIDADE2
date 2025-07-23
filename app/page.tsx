@@ -8,6 +8,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import UserManagement from '@/components/admin/UserManagement'
 import CourseManagement from '@/components/admin/CourseManagement'
+import CourseAssignment from '@/components/admin/CourseAssignment'
 import CourseViewer from '@/components/courses/CourseViewer'
 import LessonPlayer from '@/components/courses/LessonPlayer'
 import CourseModule from '@/components/courses/CourseModule'
@@ -32,7 +33,7 @@ interface DashboardStats {
   totalUsers: number
 }
 
-type AppView = 'dashboard' | 'courses' | 'certificates' | 'users' | 'settings' | 'notifications'
+type AppView = 'dashboard' | 'courses' | 'certificates' | 'content' | 'users' | 'settings' | 'notifications'
 
 export default function HomePage() {
   const [user, setUser] = useState<User | null>(null)
@@ -541,6 +542,9 @@ export default function HomePage() {
       case 'certificates':
         return user?.role === 'admin' ? <CertificateManagement /> : <CertificateViewer user={user!} />
       
+      case 'content':
+        return user?.role === 'admin' ? <CourseAssignment /> : <div className="p-6 text-center">Acesso negado</div>
+      
       case 'settings':
         return user?.role === 'admin' ? <AdminSettings /> : <div className="p-6 text-center">Acesso negado</div>
       
@@ -797,60 +801,7 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="card">
-          <h4 className="font-semibold text-gray-900 mb-4">
-            {selectedEmployee ? `Ações para ${selectedEmployee.name}` : 'Ações Rápidas'}
-          </h4>
-          <div className="space-y-3">
-            <button
-              onClick={() => setActiveView('courses')}
-              className="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors w-full text-left"
-            >
-              <BookOpen className="h-5 w-5 text-primary-600 mr-3" />
-              <span className="text-sm font-medium">
-                {selectedEmployee ? 'Ver Cursos Disponíveis' : 'Explorar Cursos'}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveView('certificates')}
-              className="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors w-full text-left"
-            >
-              <Trophy className="h-5 w-5 text-primary-600 mr-3" />
-              <span className="text-sm font-medium">
-                {selectedEmployee ? 'Certificados do Colaborador' : 'Meus Certificados'}
-              </span>
-            </button>
-            {user?.role === 'admin' && !selectedEmployee && (
-              <button
-                onClick={() => setActiveView('users')}
-                className="flex items-center p-3 rounded-lg hover:bg-gray-50 transition-colors w-full text-left"
-              >
-                <Users className="h-5 w-5 text-primary-600 mr-3" />
-                <span className="text-sm font-medium">Gerenciar Usuários</span>
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="card">
-          <h4 className="font-semibold text-gray-900 mb-4">
-            {selectedEmployee ? 'Progresso Recente' : 'Progresso Recente'}
-          </h4>
-          <div className="space-y-3">
-            <div className="text-center py-8">
-              <Clock className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">
-                {selectedEmployee 
-                  ? `${selectedEmployee.name} ainda não iniciou nenhum curso`
-                  : 'Comece a assistir cursos para ver seu progresso aqui'
-                }
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Cards removidos conforme solicitado */}
     </div>
   )
 

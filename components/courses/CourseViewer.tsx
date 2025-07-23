@@ -404,26 +404,26 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900 dark:to-green-800 rounded-xl p-6 border border-green-200 dark:border-green-700">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-green-200 dark:border-green-600 shadow-sm">
           <div className="flex items-center">
-            <div className="p-3 bg-green-500 rounded-lg">
+            <div className="p-3 bg-green-600 rounded-lg">
               <Award className="h-6 w-6 text-white" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-green-700 dark:text-green-300">Módulos Concluídos</p>
-              <p className="text-2xl font-bold text-green-900 dark:text-white">0</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Módulos Concluídos</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">0</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900 dark:to-purple-800 rounded-xl p-6 border border-purple-200 dark:border-purple-700">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-purple-200 dark:border-purple-600 shadow-sm">
           <div className="flex items-center">
-            <div className="p-3 bg-purple-500 rounded-lg">
+            <div className="p-3 bg-purple-600 rounded-lg">
               <Clock className="h-6 w-6 text-white" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-purple-700 dark:text-purple-300">Tempo de Estudo</p>
-              <p className="text-2xl font-bold text-purple-900 dark:text-white">0h</p>
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Tempo de Estudo</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">0h</p>
             </div>
           </div>
         </div>
