@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { supabase, User, Course, Lesson, Department } from '@/lib/supabase'
 import { cacheHelpers } from '@/lib/cache'
-import { emergencyGetVideos, useFallbackData } from '@/lib/supabase-emergency'
+import { emergencyGetVideos, emergencyGetCourses, useFallbackData } from '@/lib/supabase-emergency'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import UserManagement from '@/components/admin/UserManagement'
@@ -285,7 +285,7 @@ export default function HomePage() {
         
         // Carregar progresso dos cursos para o dashboard
         if (courses && courses.length > 0) {
-          const courseIds = courses.map(c => c.id)
+          const courseIds = courses.map((c: Course) => c.id)
           loadDashboardProgress(courseIds, currentUser.id)
         }
       }
@@ -339,9 +339,7 @@ export default function HomePage() {
         setEmployees([])
       }
 
-      // Buscar estatísticas do usuário atual
-      const targetUserId = selectedEmployee?.id || currentUser.id
-      
+      // Buscar estatísticas do usuário específico (usando targetUserId já definido acima)
       // Buscar certificados do usuário específico
       const { data: certificates, error: certificatesError } = await supabase
         .from('certificates')

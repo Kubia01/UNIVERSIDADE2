@@ -113,6 +113,15 @@ export const cacheHelpers = {
     return appCache.get(`dashboard:${userId}`)
   },
 
+  // Cache de usuários (para admins) - 30 minutos
+  setUsers: (users: any[]) => {
+    appCache.set('users:all', users, 30 * 60 * 1000)
+  },
+  
+  getUsers: () => {
+    return appCache.get('users:all')
+  },
+
   // Invalidar cache relacionado ao usuário
   invalidateUser: (userId: string) => {
     appCache.delete(`user:${userId}`)
