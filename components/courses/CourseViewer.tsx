@@ -58,11 +58,35 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
 
   const loadCourses = async () => {
     try {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('is_published', true)
-        .order('created_at', { ascending: false })
+      let data, error
+
+      if (user.role === 'admin') {
+        // Admins podem ver todos os cursos
+        const result = await supabase
+          .from('courses')
+          .select('*')
+          .eq('is_published', true)
+          .order('created_at', { ascending: false })
+        
+        data = result.data
+        error = result.error
+      } else {
+        // Usuários comuns veem apenas cursos atribuídos a eles
+        const result = await supabase
+          .from('courses')
+          .select(`
+            *,
+            course_assignments!inner(user_id)
+          `)
+          .eq('is_published', true)
+          .eq('course_assignments.user_id', user.id)
+          .order('created_at', { ascending: false })
+        
+        data = result.data
+        error = result.error
+        
+        console.log('[CourseViewer] Cursos atribuídos para usuário:', user.id, data)
+      }
 
       if (error) throw error
       console.log('[CourseViewer] Cursos carregados:', data)
@@ -380,13 +404,24 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
             {searchTerm || selectedDepartment !== 'All' || selectedType !== 'All'
               ? 'Nenhum módulo encontrado'
-              : 'Nenhum módulo disponível'}
+              : user.role === 'admin' 
+                ? 'Nenhum módulo disponível'
+                : 'Nenhum curso atribuído'}
           </h3>
           <p className="text-gray-500 dark:text-gray-400">
             {searchTerm || selectedDepartment !== 'All' || selectedType !== 'All'
               ? 'Tente ajustar os filtros para encontrar módulos.'
-              : 'Novos módulos de treinamento serão adicionados em breve!'}
+              : user.role === 'admin'
+                ? 'Novos módulos de treinamento serão adicionados em breve!'
+                : 'Entre em contato com o administrador para solicitar acesso aos cursos de treinamento.'}
           </p>
+          {user.role !== 'admin' && (
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg max-w-md mx-auto">
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                💡 <strong>Dica:</strong> O administrador precisa atribuir cursos específicos para você na aba "Atribuição de Cursos".
+              </p>
+            </div>
+          )}
         </div>
       )}
 

@@ -33,6 +33,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
   const [showLessonForm, setShowLessonForm] = useState(false)
   const [editingLessonIndex, setEditingLessonIndex] = useState<number | null>(null)
   const [uploadingVideo, setUploadingVideo] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [contentInputType, setContentInputType] = useState<'url' | 'upload'>('url')
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list')
 
@@ -123,18 +124,18 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
     setUploadingVideo(true)
     try {
       // Validar tipo e tamanho do arquivo
-      const maxSize = 100 * 1024 * 1024 // 100MB
-      const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov']
+      const maxSize = 500 * 1024 * 1024 // 500MB
+      const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov', 'video/mkv']
       
       if (file.size > maxSize) {
-        alert('❌ Arquivo muito grande! Tamanho máximo: 100MB')
+        alert('❌ Arquivo muito grande! Tamanho máximo: 500MB')
         return
       }
       
-      if (!allowedTypes.includes(file.type)) {
-        alert('❌ Tipo de arquivo não suportado! Use: MP4, WebM, OGG, AVI ou MOV')
-        return
-      }
+              if (!allowedTypes.includes(file.type)) {
+          alert('❌ Tipo de arquivo não suportado! Use: MP4, WebM, OGG, AVI, MOV ou MKV')
+          return
+        }
 
       const fileExt = file.name.split('.').pop()
       const fileName = `videos/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
@@ -160,12 +161,17 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
         }
       }
       
+      // Simular progresso para arquivos grandes
+      setUploadProgress(10)
+      
       const { data, error } = await supabase.storage
         .from('course-videos')
         .upload(fileName, file, {
           cacheControl: '3600',
           upsert: false
         })
+      
+      setUploadProgress(90)
 
       if (error) {
         console.error('Erro no upload:', error)
@@ -189,6 +195,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
         .from('course-videos')
         .getPublicUrl(fileName)
 
+      setUploadProgress(100)
       setCurrentLesson({ ...currentLesson, content: publicUrl })
       alert('✅ Vídeo enviado com sucesso!')
       
@@ -197,6 +204,7 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
       alert('❌ Erro inesperado no upload: ' + (error as Error).message)
     } finally {
       setUploadingVideo(false)
+      setUploadProgress(0)
     }
   }
 
@@ -673,7 +681,21 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
                     disabled={uploadingVideo}
                   />
                   {uploadingVideo && (
-                    <p className="text-sm text-blue-600 mt-2">Fazendo upload...</p>
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-sm text-blue-600">Fazendo upload...</p>
+                        <span className="text-sm text-blue-600">{uploadProgress}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Arquivos grandes podem levar alguns minutos para carregar
+                      </p>
+                    </div>
                   )}
                 </div>
               )}
