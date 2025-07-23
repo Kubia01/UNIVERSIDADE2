@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Search, BookOpen, Play, Clock, Award, Filter, ChevronRight, Users, Building } from 'lucide-react'
 import { supabase, Course, Department, CourseType, User } from '@/lib/supabase'
+import { cacheHelpers } from '@/lib/cache'
+import { CourseCardSkeleton, FastLoading } from '@/components/ui/SkeletonLoader'
 
 interface CourseViewerProps {
   user: User
@@ -63,6 +65,15 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
   }, [user.id]) // Adicionar dependência do user.id para recarregar quando usuário mudar
 
   const loadCourses = async () => {
+    // Verificar cache primeiro
+    const cachedCourses = cacheHelpers.getCourses(user.id) as Course[] | null
+    if (cachedCourses) {
+      console.log('[CourseViewer] Cursos carregados do cache:', cachedCourses.length)
+      setCourses(cachedCourses)
+      setLoading(false)
+      return
+    }
+
     try {
       let data, error
 
@@ -110,13 +121,17 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
         throw error
       }
       console.log('[CourseViewer] Cursos carregados:', data)
-      setCourses(data || [])
+      const courses = data || []
+      setCourses(courses)
+      
+      // Salvar no cache
+      cacheHelpers.setCourses(user.id, courses)
       
       // Carregar aulas para cada curso apenas se há cursos
-      if (data && data.length > 0) {
-        await loadCourseLessons(data)
+      if (courses.length > 0) {
+        await loadCourseLessons(courses)
         // Carregar progresso dos cursos
-        const courseIds = data.map(course => course.id)
+        const courseIds = courses.map(course => course.id)
         await loadCourseProgress(courseIds)
       }
     } catch (error) {
@@ -227,8 +242,22 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
 
   if (loading) {
     return (
-      <div className="p-6 flex items-center justify-center">
-        <div className="loading-spinner"></div>
+      <div className="p-6 space-y-6">
+        {/* Header skeleton */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="w-64 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse mb-2"></div>
+            <div className="w-96 h-4 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+          </div>
+          <div className="w-24 h-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+        </div>
+
+        {/* Course grid skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[...Array(6)].map((_, i) => (
+            <CourseCardSkeleton key={i} />
+          ))}
+        </div>
       </div>
     )
   }
