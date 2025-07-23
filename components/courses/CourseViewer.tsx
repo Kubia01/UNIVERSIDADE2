@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { Search, BookOpen, Play, Clock, Award, Filter, ChevronRight, Users, Building } from 'lucide-react'
 import { supabase, Course, Department, CourseType, User } from '@/lib/supabase'
 
@@ -54,7 +54,12 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
   ]
 
   useEffect(() => {
-    loadCourses()
+    // Debounce para evitar múltiplas chamadas
+    const timeoutId = setTimeout(() => {
+      loadCourses()
+    }, 50)
+    
+    return () => clearTimeout(timeoutId)
   }, [user.id]) // Adicionar dependência do user.id para recarregar quando usuário mudar
 
   const loadCourses = async () => {
@@ -181,21 +186,24 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
     }
   }
 
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesDepartment = selectedDepartment === 'All' || 
-                             course.department === selectedDepartment ||
-                             course.department === user?.department
+  // Memoizar filtros para evitar recálculos desnecessários
+  const filteredCourses = useMemo(() => {
+    return courses.filter(course => {
+      const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           course.instructor.toLowerCase().includes(searchTerm.toLowerCase())
+      
+      const matchesDepartment = selectedDepartment === 'All' || 
+                               course.department === selectedDepartment ||
+                               course.department === user?.department
 
-    const matchesType = selectedType === 'All' || course.type === selectedType
+      const matchesType = selectedType === 'All' || course.type === selectedType
 
-    return matchesSearch && matchesDepartment && matchesType
-  })
+      return matchesSearch && matchesDepartment && matchesType
+    })
+  }, [courses, searchTerm, selectedDepartment, selectedType, user?.department])
 
-  const getTypeColor = (type: CourseType) => {
+  const getTypeColor = useCallback((type: CourseType) => {
     const colors = {
       onboarding: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
       training: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
@@ -204,9 +212,9 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
       leadership: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'
     }
     return colors[type]
-  }
+  }, [])
 
-  const getTypeLabel = (type: CourseType) => {
+  const getTypeLabel = useCallback((type: CourseType) => {
     const labels = {
       onboarding: 'Integração',
       training: 'Treinamento',
@@ -215,7 +223,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
       leadership: 'Liderança'
     }
     return labels[type]
-  }
+  }, [])
 
   if (loading) {
     return (
