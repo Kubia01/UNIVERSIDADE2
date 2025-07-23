@@ -5,13 +5,14 @@
 
 import { supabase } from './supabase'
 import { appCache } from './cache'
+import { coursesCache, videosCache } from './ultra-cache'
 
-// Configurações ULTRA AGRESSIVAS
+// Configurações BALANCEADAS para suportar mais dados
 const RETRY_CONFIG = {
   maxRetries: 1, // APENAS 1 tentativa
   baseDelay: 0, // SEM delay
   maxDelay: 0,
-  timeoutMs: 2000 // 2 segundos timeout apenas
+  timeoutMs: 5000 // 5 segundos timeout para suportar mais dados
 }
 
 // Função para delay com backoff exponencial
@@ -73,9 +74,16 @@ export const emergencyQuery = async <T>(
 
 // Funções específicas para queries comuns
 export const emergencyGetCourses = async (userId: string, isAdmin: boolean = false) => {
+  // VERIFICAR ULTRA CACHE PRIMEIRO
+  const cachedCourses = coursesCache.get(userId, isAdmin)
+  if (cachedCourses) {
+    console.log('⚡ ULTRA CACHE HIT: Cursos')
+    return { data: cachedCourses, error: null }
+  }
+  
   const cacheKey = `courses-${userId}-${isAdmin}`
   
-  return emergencyQuery(
+  const result = await emergencyQuery(
     async () => {
       // Query SIMPLIFICADA - sem JOINs desnecessários
       if (isAdmin) {
@@ -83,36 +91,57 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
           .from('courses')
           .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, created_at, updated_at')
           .order('created_at', { ascending: false })
-          .limit(20) // LIMITAR resultados
+          .limit(100) // AUMENTAR limite para suportar mais cursos
       } else {
         // Para usuários normais, buscar TODOS os cursos por enquanto (simplificar)
         return await supabase
           .from('courses')
           .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, created_at, updated_at')
           .order('created_at', { ascending: false })
-          .limit(10) // MENOS resultados para usuários
+          .limit(50) // AUMENTAR limite para usuários também
       }
     },
     cacheKey,
     60 * 60 * 1000 // 1 HORA de cache
   )
+  
+  // Salvar no ULTRA CACHE também
+  if (result.data && !result.error) {
+    coursesCache.set(userId, isAdmin, result.data)
+  }
+  
+  return result
 }
 
 export const emergencyGetVideos = async (courseId: string) => {
+  // VERIFICAR ULTRA CACHE PRIMEIRO
+  const cachedVideos = videosCache.get(courseId)
+  if (cachedVideos) {
+    console.log('⚡ ULTRA CACHE HIT: Vídeos')
+    return { data: cachedVideos, error: null }
+  }
+  
   const cacheKey = `videos-${courseId}`
   
-  return emergencyQuery(
+  const result = await emergencyQuery(
     async () => {
       return await supabase
         .from('videos')
         .select('id, course_id, title, description, order_index, duration, video_url, type, created_at, updated_at')
         .eq('course_id', courseId)
         .order('order_index', { ascending: true })
-        .limit(50) // LIMITAR vídeos
+        .limit(200) // AUMENTAR limite para suportar mais vídeos por curso
     },
     cacheKey,
     2 * 60 * 60 * 1000 // 2 HORAS de cache
   )
+  
+  // Salvar no ULTRA CACHE também
+  if (result.data && !result.error) {
+    videosCache.set(courseId, result.data)
+  }
+  
+  return result
 }
 
 export const emergencyGetUserProgress = async (userId: string, courseIds: string[]) => {

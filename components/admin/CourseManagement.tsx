@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, Edit, Trash2, Play, Users, BookOpen, Clock, Award, Filter, X } from 'lucide-react'
 import { supabase, Course, User, Department, CourseType } from '@/lib/supabase'
+import { emergencyGetCourses, emergencyGetVideos } from '@/lib/supabase-emergency'
+import { lazyVideoLoader } from '@/lib/lazy-loader'
 import CourseCreation from './CourseCreation'
 import LessonEditModal from './LessonEditModal'
 
@@ -46,48 +48,49 @@ const CourseManagement: React.FC = () => {
   }, [])
 
   const loadCourses = async () => {
+    console.log('⚡ [CourseManagement] CARREGAMENTO ULTRA RÁPIDO')
     try {
-      const { data, error } = await supabase
-        .from('courses')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setCourses(data || [])
+      // Usar sistema de emergência OTIMIZADO
+      const result = await emergencyGetCourses('admin', true)
       
-      // Carregar aulas para debug
-      if (data && data.length > 0) {
-        await loadAllCourseVideos(data)
+      if (result.error) {
+        console.error('❌ Erro ao carregar cursos:', result.error)
+        setCourses([])
+      } else {
+        const courses = result.data || []
+        console.log('✅ Cursos carregados:', courses.length)
+        setCourses(courses)
+        
+        // Carregar aulas em BACKGROUND usando lazy loader
+        if (courses.length > 0) {
+          loadAllCourseVideosLazy(courses).catch(console.error)
+        }
       }
     } catch (error) {
-      console.error('Erro ao carregar cursos:', error)
+      console.error('💥 Erro crítico ao carregar cursos:', error)
+      setCourses([])
     } finally {
       setLoading(false)
     }
   }
 
-  const loadAllCourseVideos = async (courses: Course[]) => {
+  const loadAllCourseVideosLazy = async (courses: Course[]) => {
+    console.log('⚡ [CourseManagement] Carregando TODOS os vídeos com lazy loader')
     try {
-      const videosMap: {[key: string]: any[]} = {}
+      const courseIds = courses.map(course => course.id)
       
-      for (const course of courses) {
-        const { data: videos, error } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('course_id', course.id)
-          .order('order_index', { ascending: true })
-        
-        if (error) {
-          console.error(`Erro ao carregar aulas do curso ${course.id}:`, error)
-          videosMap[course.id] = []
-        } else {
-          videosMap[course.id] = videos || []
-        }
-      }
+      // Usar lazy loader para carregar todos os vídeos de forma otimizada
+      const videosMap = await lazyVideoLoader.loadMultipleCourses(courseIds, 4) // Batch de 4
       
       setCourseVideos(videosMap)
+      console.log('✅ Todos os vídeos carregados via lazy loader:', Object.keys(videosMap).length, 'cursos')
+      
+      // Log estatísticas
+      const stats = lazyVideoLoader.getStats()
+      console.log('📊 Lazy Loader Stats:', stats)
+      
     } catch (error) {
-      console.error('Erro ao carregar aulas dos cursos:', error)
+      console.error('Erro ao carregar vídeos com lazy loader:', error)
     }
   }
 
