@@ -138,7 +138,7 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
       }
 
       const courses = result.data || []
-      console.log(`[CourseViewer] 📚 Cursos recebidos:`, courses.length, courses.map(c => ({ id: c.id, title: c.title })))
+      console.log(`[CourseViewer] 📚 Cursos recebidos:`, courses.length, courses.map((c: Course) => ({ id: c.id, title: c.title })))
       setCourses(courses)
       
       // Carregar aulas e progresso em background se há cursos
