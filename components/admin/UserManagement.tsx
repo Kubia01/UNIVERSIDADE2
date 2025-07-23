@@ -87,25 +87,6 @@ const UserManagement: React.FC = () => {
 
     try {
       setLoading(true)
-      
-      // Verificar se já existe um usuário com este email
-      const { data: existingUser, error: checkError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', newUser.email)
-        .single()
-
-      if (existingUser) {
-        alert('Já existe um usuário cadastrado com este email.')
-        setLoading(false)
-        return
-      }
-
-      // Se não encontrou usuário (erro é esperado), continua
-      if (checkError && checkError.code !== 'PGRST116') {
-        throw checkError
-      }
-
       console.log('Criando usuário...')
       
       // Criar usuário usando a API route (que cria tanto auth quanto perfil)
