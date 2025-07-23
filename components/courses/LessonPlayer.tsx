@@ -98,7 +98,8 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
         console.error('Dados enviados:', progressData)
         console.error('Código do erro:', error.code)
         console.error('Detalhes do erro:', error.details)
-        alert('Erro ao salvar progresso: ' + error.message)
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+        alert('Erro ao salvar progresso: ' + errorMessage)
       } else {
         console.log('Progresso salvo com sucesso:', data)
         

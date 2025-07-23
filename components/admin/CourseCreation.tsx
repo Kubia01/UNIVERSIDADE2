@@ -191,16 +191,17 @@ Ou consulte o arquivo create-storage-bucket.md para instruções detalhadas.`)
       if (error) {
         console.error('Erro no upload:', error)
         let errorMessage = 'Erro ao fazer upload do arquivo'
+        const errorMsg = error instanceof Error ? error.message : String(error)
         
-        if (error.message.includes('The resource already exists')) {
+        if (errorMsg.includes('The resource already exists')) {
           errorMessage = 'Arquivo com este nome já existe. Tente novamente.'
-        } else if (error.message.includes('Row level security')) {
+        } else if (errorMsg.includes('Row level security')) {
           errorMessage = 'Erro de permissão. Verifique as configurações do Supabase.'
-        } else if (error.message.includes('JWT')) {
+        } else if (errorMsg.includes('JWT')) {
           errorMessage = 'Sessão expirada. Faça login novamente.'
         }
         
-        alert('❌ ' + errorMessage + '\nDetalhes: ' + error.message)
+        alert('❌ ' + errorMessage + '\nDetalhes: ' + errorMsg)
         return
       }
 

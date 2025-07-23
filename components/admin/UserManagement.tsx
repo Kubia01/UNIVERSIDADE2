@@ -117,14 +117,15 @@ const UserManagement: React.FC = () => {
       await loadUsers()
     } catch (error: any) {
       console.error('Erro ao criar usuário:', error)
-      if (error.message.includes('already been registered')) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      if (errorMessage.includes('already been registered')) {
         alert('⚠️ Este email já está cadastrado no sistema.\n\nPor favor, use um email diferente ou verifique se o usuário já existe na lista.')
-      } else if (error.message.includes('duplicate key')) {
+      } else if (errorMessage.includes('duplicate key')) {
         alert('⚠️ Este email já está cadastrado no sistema.')
-      } else if (error.message.includes('foreign key')) {
+      } else if (errorMessage.includes('foreign key')) {
         alert('❌ Erro interno: Problema na criação do usuário. Tente novamente.')
       } else {
-        alert('❌ Erro ao criar usuário: ' + error.message)
+        alert('❌ Erro ao criar usuário: ' + errorMessage)
       }
     } finally {
       setLoading(false)
@@ -166,7 +167,8 @@ const UserManagement: React.FC = () => {
       loadUsers()
     } catch (error: any) {
       console.error('Erro ao atualizar usuário:', error)
-      alert('Erro ao atualizar usuário: ' + error.message)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert('Erro ao atualizar usuário: ' + errorMessage)
     }
   }
 
@@ -227,7 +229,8 @@ const UserManagement: React.FC = () => {
         await loadUsers()
       } catch (error: any) {
         console.error('Erro ao excluir usuário:', error)
-        alert('Erro ao excluir usuário: ' + error.message)
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+        alert('Erro ao excluir usuário: ' + errorMessage)
       } finally {
         setLoading(false)
       }
@@ -252,7 +255,8 @@ const UserManagement: React.FC = () => {
         alert(`Senha redefinida com sucesso!\nNova senha: ${newPassword}\n\nO usuário pode fazer login com esta nova senha.`)
       } catch (error: any) {
         console.error('Erro ao redefinir senha:', error)
-        alert('Erro ao redefinir senha: ' + error.message)
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+        alert('Erro ao redefinir senha: ' + errorMessage)
       } finally {
         setLoading(false)
       }

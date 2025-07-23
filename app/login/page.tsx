@@ -23,7 +23,8 @@ export default function LoginPage() {
       await signIn(email, password)
       router.push('/')
     } catch (error: any) {
-      setError(error.message || 'Erro ao fazer login')
+      const errorMessage = error instanceof Error ? error.message : 'Erro ao fazer login'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }

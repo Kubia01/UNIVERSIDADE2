@@ -178,7 +178,8 @@ const CourseAssignment: React.FC = () => {
 
     } catch (error: any) {
       console.error('Erro ao atribuir curso:', error)
-      alert('❌ Erro ao atribuir curso: ' + error.message)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert('❌ Erro ao atribuir curso: ' + errorMessage)
     } finally {
       setSaving(false)
     }
@@ -205,7 +206,8 @@ const CourseAssignment: React.FC = () => {
 
     } catch (error: any) {
       console.error('Erro ao remover curso:', error)
-      alert('❌ Erro ao remover curso: ' + error.message)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert('❌ Erro ao remover curso: ' + errorMessage)
     } finally {
       setSaving(false)
     }

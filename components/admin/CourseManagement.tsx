@@ -125,7 +125,8 @@ const CourseManagement: React.FC = () => {
         loadCourses()
       } catch (error: any) {
         console.error('Erro ao excluir curso:', error)
-        alert('Erro ao excluir curso: ' + error.message)
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+        alert('Erro ao excluir curso: ' + errorMessage)
       }
     }
   }
@@ -281,7 +282,8 @@ const CourseManagement: React.FC = () => {
       
     } catch (error: any) {
       console.error('Erro ao salvar curso:', error)
-      alert('Erro ao salvar curso: ' + error.message)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert('Erro ao salvar curso: ' + errorMessage)
     }
   }
 
@@ -298,7 +300,8 @@ const CourseManagement: React.FC = () => {
       loadCourses()
     } catch (error: any) {
       console.error('Erro ao alterar status:', error)
-      alert('Erro ao alterar status: ' + error.message)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert('Erro ao alterar status: ' + errorMessage)
     }
   }
 
@@ -353,7 +356,8 @@ const CourseManagement: React.FC = () => {
         await loadCourses()
       } catch (error: any) {
         console.error('Erro ao excluir aula:', error)
-        alert('Erro ao excluir aula: ' + error.message)
+        const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+        alert('Erro ao excluir aula: ' + errorMessage)
       }
     }
   }
