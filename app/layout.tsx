@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
+import '../styles/browser-compatibility.css'
+import BrowserCompatibility from '@/components/BrowserCompatibility'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -25,9 +27,11 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gray-50">
-          {children}
-        </div>
+        <BrowserCompatibility>
+          <div className="min-h-screen bg-gray-50">
+            {children}
+          </div>
+        </BrowserCompatibility>
       </body>
     </html>
   )
