@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { supabase, User, Course, Lesson, Department } from '@/lib/supabase'
+import { cacheHelpers } from '@/lib/cache'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import UserManagement from '@/components/admin/UserManagement'
@@ -17,6 +18,7 @@ import CertificateManagement from '@/components/certificates/CertificateManageme
 import CertificateViewer from '@/components/certificates/CertificateViewer'
 import AdminSettings from '@/components/admin/AdminSettings'
 import { PlayCircle, BookOpen, Users, Trophy, Clock, Star } from 'lucide-react'
+import { DashboardSkeleton, FastLoading } from '@/components/ui/SkeletonLoader'
 
 // Declaração global para evitar múltiplas execuções
 declare global {
@@ -100,6 +102,15 @@ export default function HomePage() {
       console.log('getCurrentUser resultado:', currentUser)
       
       if (currentUser && currentUser.id) {
+        // Verificar cache primeiro
+        const cachedUser = cacheHelpers.getUser(currentUser.id) as User | null
+        if (cachedUser) {
+          console.log('Usuário carregado do cache:', cachedUser.name)
+          setUser(cachedUser)
+          setLoading(false)
+          return
+        }
+        
         console.log('Carregando perfil para usuário ID:', currentUser.id)
         
         const { data: profile, error: profileError } = await supabase
@@ -190,6 +201,8 @@ export default function HomePage() {
           }
         } else if (profile) {
           console.log('Usuário carregado:', profile.name, 'role:', profile.role)
+          // Salvar no cache
+          cacheHelpers.setUser(profile.id, profile)
           setUser(profile)
         } else {
           console.log('Perfil retornou null')
@@ -218,6 +231,19 @@ export default function HomePage() {
     const currentUser = userProfile || user
     if (!currentUser || !currentUser.id) {
       console.log('loadDashboardData: usuário não definido ou sem ID', { userProfile, user })
+      return
+    }
+
+    // Verificar cache primeiro
+    const cachedDashboard = cacheHelpers.getDashboard(currentUser.id) as any
+    if (cachedDashboard) {
+      console.log('Dashboard carregado do cache')
+      setStats(cachedDashboard.stats)
+      setRecentCourses(cachedDashboard.recentCourses)
+      setDashboardProgress(cachedDashboard.progress)
+      if (cachedDashboard.employees) {
+        setEmployees(cachedDashboard.employees)
+      }
       return
     }
 
@@ -446,6 +472,16 @@ export default function HomePage() {
       
       console.log('Estatísticas finais calculadas:', finalStats)
       setStats(finalStats)
+      
+      // Salvar no cache
+      const dashboardData = {
+        stats: finalStats,
+        recentCourses: courses || [],
+        progress: {},
+        employees: currentUser?.role === 'admin' ? employees : []
+      }
+      cacheHelpers.setDashboard(currentUser.id, dashboardData)
+      
     } catch (error) {
       console.error('Erro ao carregar dados:', error)
     }
@@ -853,8 +889,25 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="loading-spinner"></div>
+      <div className="min-h-screen bg-gray-50">
+        <div className="flex">
+          {/* Sidebar skeleton */}
+          <div className="w-64 bg-white shadow-sm border-r border-gray-200 h-screen">
+            <div className="p-4">
+              <div className="w-32 h-8 bg-gray-200 rounded animate-pulse mb-6"></div>
+              <div className="space-y-2">
+                {[...Array(6)].map((_, i) => (
+                  <div key={i} className="w-full h-10 bg-gray-100 rounded animate-pulse"></div>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          {/* Main content skeleton */}
+          <div className="flex-1">
+            <DashboardSkeleton />
+          </div>
+        </div>
       </div>
     )
   }
