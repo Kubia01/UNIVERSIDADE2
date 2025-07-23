@@ -17,6 +17,7 @@ const supabaseAdmin = createClient(
 async function verifyAdminUser(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   if (!authHeader) {
+    console.log('[verifyAdminUser] Cabeçalho Authorization não encontrado')
     return null
   }
 
@@ -25,22 +26,31 @@ async function verifyAdminUser(request: NextRequest) {
   try {
     const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
     if (error || !user) {
+      console.log('[verifyAdminUser] Erro ao obter usuário ou usuário não encontrado:', error?.message)
       return null
     }
 
     // Verificar se é admin
-    const { data: profile } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single()
 
-    if (profile?.role !== 'admin') {
+    if (profileError) {
+      console.log('[verifyAdminUser] Erro ao buscar perfil:', profileError.message)
       return null
     }
 
+    if (profile?.role !== 'admin') {
+      console.log('[verifyAdminUser] Usuário não é admin:', user.email, 'role:', profile?.role)
+      return null
+    }
+
+    console.log('[verifyAdminUser] Admin verificado:', user.email)
     return user
   } catch (error) {
+    console.log('[verifyAdminUser] Erro geral:', error)
     return null
   }
 }
@@ -110,17 +120,33 @@ export async function POST(request: NextRequest) {
 // PUT - Resetar senha
 export async function PUT(request: NextRequest) {
   try {
+    console.log('[PUT] Iniciando reset de senha')
+    
     // Verificar se é admin
     const adminUser = await verifyAdminUser(request)
     if (!adminUser) {
+      console.log('[PUT] Acesso negado - usuário não é admin')
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
     const { userId, password } = await request.json()
+    console.log('[PUT] Dados recebidos - userId:', userId, 'password length:', password?.length)
 
     if (!userId || !password) {
+      console.log('[PUT] Dados obrigatórios não fornecidos')
       return NextResponse.json({ error: 'ID do usuário e senha são obrigatórios' }, { status: 400 })
     }
+
+    // Verificar se o usuário existe na auth
+    const { data: users } = await supabaseAdmin.auth.admin.listUsers()
+    const targetUser = users.users.find(u => u.id === userId)
+    
+    if (!targetUser) {
+      console.log('[PUT] Usuário não encontrado na auth:', userId)
+      return NextResponse.json({ error: 'User not found' }, { status: 400 })
+    }
+
+    console.log('[PUT] Usuário encontrado:', targetUser.email)
 
     // Resetar senha usando Admin API
     const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
@@ -128,14 +154,15 @@ export async function PUT(request: NextRequest) {
     })
 
     if (error) {
-      console.error('Erro ao resetar senha:', error)
+      console.error('[PUT] Erro ao resetar senha:', error)
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
+    console.log('[PUT] Senha resetada com sucesso para:', targetUser.email)
     return NextResponse.json({ success: true })
 
   } catch (error) {
-    console.error('Erro geral:', error)
+    console.error('[PUT] Erro geral:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
@@ -143,34 +170,59 @@ export async function PUT(request: NextRequest) {
 // DELETE - Deletar usuário
 export async function DELETE(request: NextRequest) {
   try {
+    console.log('[DELETE] Iniciando deleção de usuário')
+    
     // Verificar se é admin
     const adminUser = await verifyAdminUser(request)
     if (!adminUser) {
+      console.log('[DELETE] Acesso negado - usuário não é admin')
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
     const userId = searchParams.get('userId')
+    console.log('[DELETE] UserId recebido:', userId)
 
     if (!userId) {
+      console.log('[DELETE] ID do usuário não fornecido')
       return NextResponse.json({ error: 'ID do usuário é obrigatório' }, { status: 400 })
     }
 
+    // Verificar se o usuário existe na auth
+    const { data: users } = await supabaseAdmin.auth.admin.listUsers()
+    const targetUser = users.users.find(u => u.id === userId)
+    
+    if (!targetUser) {
+      console.log('[DELETE] Usuário não encontrado na auth:', userId)
+      return NextResponse.json({ error: 'User not found' }, { status: 400 })
+    }
+
+    console.log('[DELETE] Usuário encontrado:', targetUser.email)
+
     // 1. Remover perfil
-    await supabaseAdmin.from('profiles').delete().eq('id', userId)
+    console.log('[DELETE] Removendo perfil...')
+    const { error: profileError } = await supabaseAdmin.from('profiles').delete().eq('id', userId)
+    
+    if (profileError) {
+      console.log('[DELETE] Erro ao remover perfil:', profileError.message)
+    } else {
+      console.log('[DELETE] Perfil removido com sucesso')
+    }
 
     // 2. Remover usuário da auth
+    console.log('[DELETE] Removendo usuário da auth...')
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (error) {
-      console.error('Erro ao deletar usuário:', error)
+      console.error('[DELETE] Erro ao deletar usuário da auth:', error)
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
+    console.log('[DELETE] Usuário deletado com sucesso:', targetUser.email)
     return NextResponse.json({ success: true })
 
   } catch (error) {
-    console.error('Erro geral:', error)
+    console.error('[DELETE] Erro geral:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
