@@ -58,18 +58,93 @@ async function verifyAdminUser(request: NextRequest) {
 // POST - Criar usuário
 export async function POST(request: NextRequest) {
   try {
+    console.log('[POST] Iniciando criação de usuário')
+    
     // Verificar se é admin
     const adminUser = await verifyAdminUser(request)
     if (!adminUser) {
+      console.log('[POST] Acesso negado - usuário não é admin')
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
     const { email, password, name, department, role } = await request.json()
+    console.log('[POST] Dados recebidos - email:', email, 'name:', name)
 
     if (!email || !password || !name) {
+      console.log('[POST] Dados obrigatórios não fornecidos')
       return NextResponse.json({ error: 'Dados obrigatórios não fornecidos' }, { status: 400 })
     }
 
+    // Verificar se já existe usuário com este email na auth
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
+    const existingAuthUser = existingUsers.users.find(u => u.email === email)
+
+    if (existingAuthUser) {
+      console.log('[POST] Usuário já existe na auth:', email, 'ID:', existingAuthUser.id)
+      
+      // Verificar se tem perfil
+      const { data: existingProfile, error: profileCheckError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', existingAuthUser.id)
+        .single()
+
+      if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+        console.log('[POST] Erro ao verificar perfil existente:', profileCheckError.message)
+        return NextResponse.json({ error: 'Erro ao verificar usuário existente' }, { status: 400 })
+      }
+
+      if (existingProfile) {
+        console.log('[POST] Usuário já tem perfil completo')
+        return NextResponse.json({ error: 'A user with this email address has already been registered' }, { status: 400 })
+      }
+
+      // Usuário existe na auth mas não tem perfil - criar perfil
+      console.log('[POST] Criando perfil para usuário órfão existente')
+      
+      // Primeiro, atualizar a senha do usuário existente
+      const { error: updatePasswordError } = await supabaseAdmin.auth.admin.updateUserById(existingAuthUser.id, {
+        password
+      })
+
+      if (updatePasswordError) {
+        console.log('[POST] Erro ao atualizar senha do usuário órfão:', updatePasswordError.message)
+      } else {
+        console.log('[POST] Senha atualizada para usuário órfão')
+      }
+
+      // Criar perfil
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .insert({
+          id: existingAuthUser.id,
+          email,
+          name,
+          role: role || 'user',
+          department: department || 'Geral'
+        })
+
+      if (profileError) {
+        console.error('[POST] Erro ao criar perfil para usuário órfão:', profileError)
+        return NextResponse.json({ error: 'Erro ao criar perfil do usuário' }, { status: 400 })
+      }
+
+      console.log('[POST] Perfil criado com sucesso para usuário órfão')
+      return NextResponse.json({ 
+        success: true, 
+        user: {
+          id: existingAuthUser.id,
+          email,
+          name,
+          role: role || 'user',
+          department: department || 'Geral'
+        }
+      })
+    }
+
+    // Usuário não existe - criar novo
+    console.log('[POST] Criando novo usuário na autenticação')
+    
     // 1. Criar usuário na autenticação
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -78,9 +153,11 @@ export async function POST(request: NextRequest) {
     })
 
     if (authError) {
-      console.error('Erro ao criar usuário na auth:', authError)
+      console.error('[POST] Erro ao criar usuário na auth:', authError)
       return NextResponse.json({ error: authError.message }, { status: 400 })
     }
+
+    console.log('[POST] Usuário criado na auth:', authUser.user.id)
 
     // 2. Criar perfil
     const { error: profileError } = await supabaseAdmin
@@ -94,12 +171,13 @@ export async function POST(request: NextRequest) {
       })
 
     if (profileError) {
-      console.error('Erro ao criar perfil:', profileError)
+      console.error('[POST] Erro ao criar perfil:', profileError)
       // Se falhar ao criar perfil, remover usuário da auth
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
       return NextResponse.json({ error: 'Erro ao criar perfil do usuário' }, { status: 400 })
     }
 
+    console.log('[POST] Usuário e perfil criados com sucesso')
     return NextResponse.json({ 
       success: true, 
       user: {
@@ -112,7 +190,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Erro geral:', error)
+    console.error('[POST] Erro geral:', error)
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
