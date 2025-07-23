@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { Search, Plus, Edit, Trash2, RotateCcw, MessageSquare, X } from 'lucide-react'
 import { supabase, User, Department, UserRole } from '@/lib/supabase'
+import { createUserWithAuth, resetUserPassword, deleteUserFromAuth } from '@/lib/supabase-admin'
 
 const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -107,14 +108,19 @@ const UserManagement: React.FC = () => {
 
       console.log('Criando usuário...')
       
-      // Criar um ID único para o usuário
-      const userId = crypto.randomUUID()
-      
-      // Criar perfil diretamente (sem auth por enquanto)
+      // Primeiro, criar o usuário na autenticação do Supabase
+      const { data: authData, error: authError } = await createUserWithAuth(newUser.email, newUser.password)
+
+      if (authError || !authData?.user) {
+        console.error('Erro ao criar usuário na autenticação:', authError)
+        throw authError || new Error('Usuário não foi criado corretamente')
+      }
+
+      // Depois, criar o perfil usando o ID do usuário autenticado
       const { error: profileError } = await supabase
         .from('profiles')
         .insert([{
-          id: userId,
+          id: authData.user.id,
           name: newUser.name,
           email: newUser.email,
           department: newUser.department,
@@ -125,6 +131,8 @@ const UserManagement: React.FC = () => {
 
       if (profileError) {
         console.error('Erro ao criar perfil:', profileError)
+        // Se falhou ao criar perfil, tentar remover o usuário da auth
+        await deleteUserFromAuth(authData.user.id)
         throw profileError
       }
 
@@ -230,13 +238,21 @@ const UserManagement: React.FC = () => {
           console.error('Erro ao deletar certificados:', certificatesError)
         }
 
-        // 4. Finalmente, deletar o perfil
+        // 4. Deletar o perfil
         const { error: profileError } = await supabase
           .from('profiles')
           .delete()
           .eq('id', userId)
 
         if (profileError) throw profileError
+
+        // 5. Finalmente, deletar o usuário da autenticação
+        const { error: authError } = await deleteUserFromAuth(userId)
+        
+        if (authError) {
+          console.error('Erro ao deletar usuário da autenticação:', authError)
+          // Não falhar se não conseguir deletar da auth, pois o perfil já foi removido
+        }
 
         alert(`Usuário "${userName}" foi excluído com sucesso!`)
         await loadUsers()
@@ -249,9 +265,28 @@ const UserManagement: React.FC = () => {
     }
   }
 
-  const handleResetPassword = (userId: string) => {
-    if (confirm('Tem certeza que deseja redefinir a senha para "pass123"?')) {
-      alert('Senha redefinida para: pass123')
+  const handleResetPassword = async (userId: string) => {
+    const newPassword = 'pass123'
+    
+    if (confirm(`Tem certeza que deseja redefinir a senha para "${newPassword}"?`)) {
+      try {
+        setLoading(true)
+        
+        // Redefinir senha usando função robusta
+        const { error } = await resetUserPassword(userId, newPassword)
+
+        if (error) {
+          console.error('Erro ao redefinir senha:', error)
+          throw error
+        }
+
+        alert(`Senha redefinida com sucesso!\nNova senha: ${newPassword}\n\nO usuário pode fazer login com esta nova senha.`)
+      } catch (error: any) {
+        console.error('Erro ao redefinir senha:', error)
+        alert('Erro ao redefinir senha: ' + error.message)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
