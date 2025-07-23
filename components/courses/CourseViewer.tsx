@@ -93,7 +93,8 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
         console.error('[CourseViewer] Erro ao carregar cursos:', error)
         
         // Tratamento específico para diferentes tipos de erro
-        if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        if (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS')) {
           console.error('[CourseViewer] Problema de conectividade ou CORS detectado')
           // Definir cursos vazios e mostrar mensagem específica
           setCourses([])
@@ -118,7 +119,8 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
       setCourses([])
       
       // Mostrar alerta específico para problemas de conectividade
-      if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('CORS'))) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      if (errorMessage && (errorMessage.includes('Failed to fetch') || errorMessage.includes('CORS'))) {
         console.error('🚨 PROBLEMA DE CONECTIVIDADE DETECTADO!')
         console.error('Possíveis causas:')
         console.error('1. Projeto Supabase pausado ou offline')

@@ -139,16 +139,17 @@ Ou consulte o arquivo create-storage-bucket.md para instruções detalhadas.`)
       if (error) {
         console.error('Erro no upload:', error)
         let errorMessage = 'Erro ao fazer upload do arquivo'
+        const errorMsg = error instanceof Error ? error.message : String(error)
         
-        if (error.message.includes('The resource already exists')) {
+        if (errorMsg.includes('The resource already exists')) {
           errorMessage = 'Arquivo com este nome já existe. Tente novamente.'
-        } else if (error.message.includes('Row level security')) {
+        } else if (errorMsg.includes('Row level security')) {
           errorMessage = 'Erro de permissão. Verifique as configurações do Supabase.'
-        } else if (error.message.includes('JWT')) {
+        } else if (errorMsg.includes('JWT')) {
           errorMessage = 'Sessão expirada. Faça login novamente.'
         }
         
-        alert('❌ ' + errorMessage + '\nDetalhes: ' + error.message)
+        alert('❌ ' + errorMessage + '\nDetalhes: ' + errorMsg)
         return
       }
 
@@ -170,7 +171,8 @@ Ou consulte o arquivo create-storage-bucket.md para instruções detalhadas.`)
       alert('✅ Vídeo enviado com sucesso!')
     } catch (error: any) {
       console.error('Erro geral no upload:', error)
-      alert('❌ Erro inesperado no upload: ' + error.message)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert('❌ Erro inesperado no upload: ' + errorMessage)
     } finally {
       setUploadingVideo(false)
       setUploadProgress(0)
@@ -207,7 +209,8 @@ Ou consulte o arquivo create-storage-bucket.md para instruções detalhadas.`)
       onClose()
     } catch (error: any) {
       console.error('Erro ao salvar aula:', error)
-      alert('Erro ao salvar aula: ' + error.message)
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
+      alert('Erro ao salvar aula: ' + errorMessage)
     } finally {
       setSaving(false)
     }
