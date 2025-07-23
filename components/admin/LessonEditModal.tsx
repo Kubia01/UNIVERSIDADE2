@@ -64,32 +64,72 @@ const LessonEditModal: React.FC<LessonEditModalProps> = ({
   const handleVideoUpload = async (file: File) => {
     if (!file) return
 
-    // Validar tipo de arquivo
-    const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov']
-    if (!allowedTypes.includes(file.type)) {
-      alert('Tipo de arquivo não suportado. Use MP4, WebM, OGG, AVI ou MOV.')
-      return
-    }
-
-    // Validar tamanho (100MB max)
-    if (file.size > 100 * 1024 * 1024) {
-      alert('Arquivo muito grande. Tamanho máximo: 100MB.')
-      return
-    }
-
     setUploadingVideo(true)
 
     try {
+      // Validar tipo de arquivo
+      const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov']
+      if (!allowedTypes.includes(file.type)) {
+        alert('❌ Tipo de arquivo não suportado! Use: MP4, WebM, OGG, AVI ou MOV')
+        return
+      }
+
+      // Validar tamanho (100MB max)
+      if (file.size > 100 * 1024 * 1024) {
+        alert('❌ Arquivo muito grande! Tamanho máximo: 100MB')
+        return
+      }
+
       // Criar nome único para o arquivo
       const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const fileName = `videos/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      
+      console.log('📤 Iniciando upload do arquivo:', file.name, 'Tamanho:', (file.size / 1024 / 1024).toFixed(2) + 'MB')
+      
+      // Tentar criar o bucket se não existir
+      const { data: buckets } = await supabase.storage.listBuckets()
+      const bucketExists = buckets?.some(bucket => bucket.name === 'course-videos')
+      
+      if (!bucketExists) {
+        console.log('📁 Criando bucket course-videos...')
+        const { error: bucketError } = await supabase.storage.createBucket('course-videos', {
+          public: true,
+          allowedMimeTypes: allowedTypes,
+          fileSizeLimit: 100 * 1024 * 1024
+        })
+        
+        if (bucketError) {
+          console.error('Erro ao criar bucket:', bucketError)
+          alert('❌ Erro na configuração de armazenamento. Entre em contato com o administrador.')
+          return
+        }
+      }
       
       // Upload para o Supabase Storage
       const { data, error } = await supabase.storage
         .from('course-videos')
-        .upload(fileName, file)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
 
-      if (error) throw error
+      if (error) {
+        console.error('Erro no upload:', error)
+        let errorMessage = 'Erro ao fazer upload do arquivo'
+        
+        if (error.message.includes('The resource already exists')) {
+          errorMessage = 'Arquivo com este nome já existe. Tente novamente.'
+        } else if (error.message.includes('Row level security')) {
+          errorMessage = 'Erro de permissão. Verifique as configurações do Supabase.'
+        } else if (error.message.includes('JWT')) {
+          errorMessage = 'Sessão expirada. Faça login novamente.'
+        }
+        
+        alert('❌ ' + errorMessage + '\nDetalhes: ' + error.message)
+        return
+      }
+
+      console.log('✅ Upload concluído:', data.path)
 
       // Obter URL pública
       const { data: { publicUrl } } = supabase.storage
@@ -102,10 +142,10 @@ const LessonEditModal: React.FC<LessonEditModalProps> = ({
         video_url: publicUrl
       })
 
-      alert('Vídeo enviado com sucesso!')
+      alert('✅ Vídeo enviado com sucesso!')
     } catch (error: any) {
-      console.error('Erro ao fazer upload:', error)
-      alert('Erro ao fazer upload do vídeo: ' + error.message)
+      console.error('Erro geral no upload:', error)
+      alert('❌ Erro inesperado no upload: ' + error.message)
     } finally {
       setUploadingVideo(false)
     }

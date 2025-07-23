@@ -122,28 +122,79 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
   const handleVideoUpload = async (file: File) => {
     setUploadingVideo(true)
     try {
+      // Validar tipo e tamanho do arquivo
+      const maxSize = 100 * 1024 * 1024 // 100MB
+      const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/avi', 'video/mov']
+      
+      if (file.size > maxSize) {
+        alert('❌ Arquivo muito grande! Tamanho máximo: 100MB')
+        return
+      }
+      
+      if (!allowedTypes.includes(file.type)) {
+        alert('❌ Tipo de arquivo não suportado! Use: MP4, WebM, OGG, AVI ou MOV')
+        return
+      }
+
       const fileExt = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      const fileName = `videos/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      
+      console.log('📤 Iniciando upload do arquivo:', file.name, 'Tamanho:', (file.size / 1024 / 1024).toFixed(2) + 'MB')
+      
+      // Tentar criar o bucket se não existir
+      const { data: buckets } = await supabase.storage.listBuckets()
+      const bucketExists = buckets?.some(bucket => bucket.name === 'course-videos')
+      
+      if (!bucketExists) {
+        console.log('📁 Criando bucket course-videos...')
+        const { error: bucketError } = await supabase.storage.createBucket('course-videos', {
+          public: true,
+          allowedMimeTypes: allowedTypes,
+          fileSizeLimit: maxSize
+        })
+        
+        if (bucketError) {
+          console.error('Erro ao criar bucket:', bucketError)
+          alert('❌ Erro na configuração de armazenamento. Entre em contato com o administrador.')
+          return
+        }
+      }
       
       const { data, error } = await supabase.storage
         .from('course-videos')
-        .upload(fileName, file)
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
 
       if (error) {
         console.error('Erro no upload:', error)
-        alert('Erro ao fazer upload do vídeo')
+        let errorMessage = 'Erro ao fazer upload do arquivo'
+        
+        if (error.message.includes('The resource already exists')) {
+          errorMessage = 'Arquivo com este nome já existe. Tente novamente.'
+        } else if (error.message.includes('Row level security')) {
+          errorMessage = 'Erro de permissão. Verifique as configurações do Supabase.'
+        } else if (error.message.includes('JWT')) {
+          errorMessage = 'Sessão expirada. Faça login novamente.'
+        }
+        
+        alert('❌ ' + errorMessage + '\nDetalhes: ' + error.message)
         return
       }
+
+      console.log('✅ Upload concluído:', data.path)
 
       const { data: { publicUrl } } = supabase.storage
         .from('course-videos')
         .getPublicUrl(fileName)
 
       setCurrentLesson({ ...currentLesson, content: publicUrl })
-      alert('Vídeo enviado com sucesso!')
+      alert('✅ Vídeo enviado com sucesso!')
+      
     } catch (error) {
-      console.error('Erro no upload:', error)
-      alert('Erro ao fazer upload do vídeo')
+      console.error('Erro geral no upload:', error)
+      alert('❌ Erro inesperado no upload: ' + (error as Error).message)
     } finally {
       setUploadingVideo(false)
     }
