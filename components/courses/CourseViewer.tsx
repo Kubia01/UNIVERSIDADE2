@@ -32,6 +32,7 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
   const [showFilters, setShowFilters] = useState(false)
   const [courseLessons, setCourseLessons] = useState<{[key: string]: any[]}>({})
   const [courseProgress, setCourseProgress] = useState<{[key: string]: number}>({})
+  const [connectionError, setConnectionError] = useState(false)
 
   const departments: { value: Department | 'All'; label: string }[] = [
     { value: 'All', label: 'Todos os Departamentos' },
@@ -88,7 +89,20 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
         console.log('[CourseViewer] Cursos atribuídos para usuário:', user.id, data)
       }
 
-      if (error) throw error
+      if (error) {
+        console.error('[CourseViewer] Erro ao carregar cursos:', error)
+        
+        // Tratamento específico para diferentes tipos de erro
+        if (error.message.includes('Failed to fetch') || error.message.includes('CORS')) {
+          console.error('[CourseViewer] Problema de conectividade ou CORS detectado')
+          // Definir cursos vazios e mostrar mensagem específica
+          setCourses([])
+          setConnectionError(true)
+          return
+        }
+        
+        throw error
+      }
       console.log('[CourseViewer] Cursos carregados:', data)
       setCourses(data || [])
       
@@ -102,6 +116,18 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
     } catch (error) {
       console.error('Erro ao carregar cursos:', error)
       setCourses([])
+      
+      // Mostrar alerta específico para problemas de conectividade
+      if (error.message && (error.message.includes('Failed to fetch') || error.message.includes('CORS'))) {
+        console.error('🚨 PROBLEMA DE CONECTIVIDADE DETECTADO!')
+        console.error('Possíveis causas:')
+        console.error('1. Projeto Supabase pausado ou offline')
+        console.error('2. URL do Supabase incorreta no .env.local')
+        console.error('3. Chaves de API inválidas')
+        console.error('4. Problemas de rede/firewall')
+        console.error('Execute: node diagnose-supabase-connection.js')
+        setConnectionError(true)
+      }
     } finally {
       setLoading(false)
     }
@@ -261,8 +287,37 @@ const CourseViewer: React.FC<CourseViewerProps> = ({ user, onCourseSelect }) => 
         )}
       </div>
 
+      {/* Connection Error Alert */}
+      {connectionError && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                Problema de Conectividade
+              </h3>
+              <div className="mt-2 text-sm text-red-700 dark:text-red-300">
+                <p>Não foi possível carregar os cursos. Possíveis causas:</p>
+                <ul className="mt-1 ml-4 list-disc">
+                  <li>Projeto Supabase pausado ou offline</li>
+                  <li>Configuração incorreta das variáveis de ambiente</li>
+                  <li>Problemas de rede ou firewall</li>
+                </ul>
+                <p className="mt-2">
+                  <strong>Solução:</strong> Execute <code className="bg-red-100 dark:bg-red-800 px-1 rounded">node diagnose-supabase-connection.js</code> no terminal.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modules Grid */}
-      {filteredCourses.length > 0 ? (
+      {!connectionError && filteredCourses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((course) => {
             console.log('[CourseViewer] Renderizando card do módulo:', course)
