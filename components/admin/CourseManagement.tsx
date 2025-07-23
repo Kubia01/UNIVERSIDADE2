@@ -51,6 +51,7 @@ const CourseManagement: React.FC = () => {
     console.log('⚡ [CourseManagement] CARREGAMENTO ULTRA RÁPIDO')
     try {
       // Usar sistema de emergência OTIMIZADO
+      console.log('[CourseManagement] 🔑 Usando cache key: courses-admin-true')
       const result = await emergencyGetCourses('admin', true)
       
       if (result.error) {
