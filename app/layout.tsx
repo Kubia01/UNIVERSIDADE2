@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import '../styles/browser-compatibility-lite.css'
-// import BrowserCompatibility from '@/components/BrowserCompatibility' // Removido - muito pesado
+import AdaptiveColorsProvider from '@/components/providers/AdaptiveColorsProvider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,9 +27,11 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gray-50">
-          {children}
-        </div>
+        <AdaptiveColorsProvider>
+          <div className="min-h-screen adaptive-bg">
+            {children}
+          </div>
+        </AdaptiveColorsProvider>
         <script dangerouslySetInnerHTML={{
           __html: `
             // Compatibilidade leve inline

@@ -23,6 +23,7 @@ import CertificateViewer from '@/components/certificates/CertificateViewer'
 import AdminSettings from '@/components/admin/AdminSettings'
 import { PlayCircle, BookOpen, Users, Trophy, Clock, Star } from 'lucide-react'
 import { DashboardSkeleton, FastLoading } from '@/components/ui/SkeletonLoader'
+import AdaptiveColorDemo from '@/components/utils/AdaptiveColorDemo'
 import { ConnectionStatus, useConnectionStatus } from '@/components/ui/ConnectionStatus'
 
 // Declaração global para evitar múltiplas execuções
@@ -805,7 +806,7 @@ export default function HomePage() {
                     
                     setSelectedEmployee(employee)
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  className="adaptive-input w-full px-3 py-2 border rounded-lg focus:ring-2 transition-colors"
                   disabled={employees.length === 0}
                 >
                   <option value="">
@@ -828,7 +829,7 @@ export default function HomePage() {
                     <p className="text-blue-600">
                       ℹ️ Carregando usuários em segundo plano...
                     </p>
-                    <p className="text-gray-500 mt-1">
+                    <p className="adaptive-text-muted mt-1">
                       A lista será carregada automaticamente em alguns segundos.
                     </p>
                   </div>
@@ -973,7 +974,7 @@ export default function HomePage() {
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900 mb-2">{course.title}</h4>
                     <p className="text-sm text-gray-600 mb-3 line-clamp-2">{course.description}</p>
-                    <div className="flex items-center text-xs text-gray-500 space-x-4">
+                    <div className="flex items-center text-xs adaptive-text-muted space-x-4">
                       <span className="flex items-center">
                         <Clock className="h-3 w-3 mr-1" />
                         {course.duration || 15}min
@@ -1022,7 +1023,7 @@ export default function HomePage() {
         ) : (
           <div className="text-center py-12">
             <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Nenhum curso disponível no momento.</p>
+                            <p className="adaptive-text-muted">Nenhum curso disponível no momento.</p>
             <p className="text-sm text-gray-400 mt-2">
               Novos cursos serão adicionados em breve!
             </p>
@@ -1039,17 +1040,17 @@ export default function HomePage() {
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Informações</h2>
       <div className="text-center py-12">
         <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-        <p className="text-gray-500">Funcionalidade em desenvolvimento...</p>
+                        <p className="adaptive-text-muted">Funcionalidade em desenvolvimento...</p>
       </div>
     </div>
   )
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen adaptive-bg">
         <div className="flex">
           {/* Sidebar skeleton */}
-          <div className="w-64 bg-white shadow-sm border-r border-gray-200 h-screen">
+          <div className="w-64 adaptive-surface shadow-sm border-r adaptive-border h-screen">
             <div className="p-4">
               <div className="w-32 h-8 bg-gray-200 rounded animate-pulse mb-6"></div>
               <div className="space-y-2">
@@ -1070,7 +1071,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen adaptive-bg flex">
       {/* Banner de status de conexão */}
       <ConnectionStatus
         isConnected={connectionStatus.isOnline}
@@ -1106,6 +1107,9 @@ export default function HomePage() {
           {renderMainContent()}
         </main>
       </div>
+      
+      {/* Demo temporário do sistema de cores adaptativas */}
+      <AdaptiveColorDemo />
     </div>
   )
 }
