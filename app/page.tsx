@@ -338,8 +338,11 @@ export default function HomePage() {
         }
       }
 
-      // CARREGAMENTO OTIMIZADO DE USUÁRIOS (ADMINS)
-      if (currentUser?.role === 'admin') {
+      // CARREGAMENTO OTIMIZADO DE USUÁRIOS (SEMPRE PARA ADMINS)
+      // Corrigir: Sempre manter employees carregados para usuários admin, independentemente do usuário visualizado
+      // IMPORTANTE: Usar o usuário logado original (user) para verificar se é admin, não o selectedEmployee
+      const originalUser = user || currentUser
+      if (originalUser?.role === 'admin') {
         console.log('📊 [Dashboard] Admin detectado - carregando usuários via cache')
         
         // Verificar cache de usuários primeiro
@@ -380,16 +383,28 @@ export default function HomePage() {
               cacheHelpers.setUsers(formattedUsers)
             } else {
               console.error('❌ [Dashboard] Erro ao carregar usuários:', realError)
-              setEmployees([])
+              // CORREÇÃO: Não limpar employees se houve erro, manter lista existente
+              if (employees.length === 0) {
+                setEmployees([])
+              }
             }
           } catch (error) {
             console.error('❌ [Dashboard] Erro no carregamento de usuários:', error)
-            setEmployees([])
+            // CORREÇÃO: Não limpar employees se houve erro, manter lista existente
+            if (employees.length === 0) {
+              setEmployees([])
+            }
           }
         }
       } else {
-        console.log('📊 [Dashboard] Usuário não é admin - lista de funcionários não necessária')
-        setEmployees([])
+        // CORREÇÃO: Se o usuário logado não é admin, limpar apenas se não há usuário selecionado
+        // Isso permite que admins vejam dados de não-admins sem perder o filtro
+        if (!selectedEmployee) {
+          console.log('📊 [Dashboard] Usuário não é admin - lista de funcionários não necessária')
+          setEmployees([])
+        } else {
+          console.log('📊 [Dashboard] Mantendo lista de employees para permitir troca de usuário')
+        }
       }
 
       // Buscar estatísticas do usuário específico (usando targetUserId já definido acima)
@@ -773,7 +788,7 @@ export default function HomePage() {
                     const employee = employees.find(emp => emp.id === employeeId) || null
                     console.log('👤 [Dashboard] Usuário selecionado:', employee?.name || 'Todos')
                     
-                    // Limpar cache do usuário anterior se necessário
+                    // Limpar cache do usuário anterior se necessário para forçar atualização
                     if (selectedEmployee && window.localStorage) {
                       const oldCacheKeys = Object.keys(localStorage).filter(key => 
                         key.includes(`dashboard-${selectedEmployee.id}`) ||
@@ -785,17 +800,8 @@ export default function HomePage() {
                       })
                     }
                     
-                    // Se selecionou um usuário específico, limpar seu cache para forçar atualização
-                    if (employee && window.localStorage) {
-                      const newCacheKeys = Object.keys(localStorage).filter(key => 
-                        key.includes(`dashboard-${employee.id}`) ||
-                        key.includes(`courses-${employee.id}`)
-                      )
-                      newCacheKeys.forEach(key => {
-                        console.log('🗑️ [Dashboard] Limpando cache do novo usuário:', key)
-                        localStorage.removeItem(key)
-                      })
-                    }
+                    // CORREÇÃO: Não limpar cache do novo usuário para melhor performance
+                    // O cache será atualizado naturalmente quando necessário
                     
                     setSelectedEmployee(employee)
                   }}

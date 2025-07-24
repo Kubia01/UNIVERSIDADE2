@@ -215,11 +215,18 @@ const CourseModule: React.FC<CourseModuleProps> = ({ course, user, onBack, onLes
         {/* Course Info */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 mb-6">
           <div className="flex items-start space-x-6">
-            {course.thumbnail ? (
+            {course.thumbnail && course.thumbnail.trim() !== '' ? (
               <img
                 src={course.thumbnail}
                 alt={course.title}
                 className="w-32 h-24 object-cover rounded-lg"
+                onLoad={() => {
+                  console.log('[CourseModule] ✅ Thumbnail carregada com sucesso para:', course.title)
+                }}
+                onError={(e) => {
+                  console.error('[CourseModule] ❌ Erro ao carregar thumbnail para:', course.title)
+                  console.error('[CourseModule] ❌ URL da thumbnail:', course.thumbnail?.substring(0, 100) + '...')
+                }}
               />
             ) : (
               <div className="w-32 h-24 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
