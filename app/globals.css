@@ -10,101 +10,202 @@
   --background-end-rgb: 255, 255, 255;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+/* Sistema de Cores Adaptativas */
+:root {
+  /* Variáveis adaptativas (serão definidas via JavaScript) */
+  --adaptive-bg: rgb(255, 255, 255);
+  --adaptive-surface: rgb(249, 250, 251);
+  --adaptive-text-primary: rgb(31, 41, 55);
+  --adaptive-text-secondary: rgb(75, 85, 99);
+  --adaptive-text-muted: rgb(107, 114, 128);
+  --adaptive-text-inverse: rgb(255, 255, 255);
+  --adaptive-border-light: rgb(243, 244, 246);
+  --adaptive-border-medium: rgb(229, 231, 235);
+  --adaptive-border-heavy: rgb(209, 213, 219);
+  --adaptive-accent-primary: rgb(59, 130, 246);
+  --adaptive-accent-secondary: rgb(251, 146, 60);
+  --adaptive-accent-success: rgb(34, 197, 94);
+  --adaptive-accent-warning: rgb(245, 158, 11);
+  --adaptive-accent-error: rgb(239, 68, 68);
+  --adaptive-input-bg: rgb(255, 255, 255);
+  --adaptive-input-border: rgb(229, 231, 235);
+  --adaptive-input-text: rgb(31, 41, 55);
+  --adaptive-input-placeholder: rgb(107, 114, 128);
+  --adaptive-input-focus: rgb(59, 130, 246);
   
-  /* Cores para textos e elementos no tema escuro */
-  .text-gray-900 {
-    color: rgb(243, 244, 246) !important;
-  }
-  
-  .text-gray-800 {
-    color: rgb(229, 231, 235) !important;
-  }
-  
-  .text-gray-700 {
-    color: rgb(209, 213, 219) !important;
-  }
-  
-  .text-gray-600 {
-    color: rgb(156, 163, 175) !important;
-  }
-  
-  .text-gray-500 {
-    color: rgb(107, 114, 128) !important;
-  }
-  
-  .text-gray-400 {
-    color: rgb(75, 85, 99) !important;
-  }
-  
-  /* Cards e fundos no tema escuro */
-  .card,
-  .bg-white {
-    background-color: rgb(31, 41, 55) !important;
-    border-color: rgb(55, 65, 81) !important;
-  }
-  
-  /* Botões e links no tema escuro */
-  .bg-primary-600 {
-    background-color: rgb(59, 130, 246) !important;
-  }
-  
-  .bg-primary-700 {
-    background-color: rgb(37, 99, 235) !important;
-  }
-  
-  /* Bordas no tema escuro */
-  .border-gray-200 {
-    border-color: rgb(55, 65, 81) !important;
-  }
-  
-  .border-gray-300 {
-    border-color: rgb(75, 85, 99) !important;
-  }
-  
-  /* Inputs e formulários no tema escuro */
-  .form-input,
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  textarea,
-  select {
-    background-color: rgb(31, 41, 55) !important;
-    border-color: rgb(55, 65, 81) !important;
-    color: rgb(243, 244, 246) !important;
-  }
-  
-  .form-input:focus,
-  input[type="text"]:focus,
-  input[type="email"]:focus,
-  input[type="password"]:focus,
-  textarea:focus,
-  select:focus {
-    background-color: rgb(31, 41, 55) !important;
-    border-color: rgb(59, 130, 246) !important;
-    color: rgb(243, 244, 246) !important;
-  }
-  
-  /* Placeholders no tema escuro */
-  .form-input::placeholder,
-  input::placeholder,
-  textarea::placeholder {
-    color: rgb(107, 114, 128) !important;
-  }
-  
-  /* Hover states no tema escuro */
-  .bg-gray-100:hover {
-    background-color: rgb(55, 65, 81) !important;
-  }
-  
-  .bg-gray-50:hover {
-    background-color: rgb(55, 65, 81) !important;
-  }
+  /* Variáveis legadas (manter compatibilidade) */
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+}
+
+/* Aplicar cores adaptativas globalmente */
+body {
+  background-color: var(--adaptive-bg) !important;
+  color: var(--adaptive-text-primary) !important;
+}
+
+/* Textos adaptáveis */
+.adaptive-text-primary,
+.text-gray-900 {
+  color: var(--adaptive-text-primary) !important;
+}
+
+.adaptive-text-secondary,
+.text-gray-800,
+.text-gray-700 {
+  color: var(--adaptive-text-secondary) !important;
+}
+
+.adaptive-text-muted,
+.text-gray-600,
+.text-gray-500 {
+  color: var(--adaptive-text-muted) !important;
+}
+
+.text-gray-400 {
+  color: var(--adaptive-text-muted) !important;
+  opacity: 0.8;
+}
+
+/* Superfícies e fundos adaptáveis */
+.adaptive-surface,
+.card,
+.bg-white {
+  background-color: var(--adaptive-surface) !important;
+  border-color: var(--adaptive-border-light) !important;
+}
+
+.adaptive-bg {
+  background-color: var(--adaptive-bg) !important;
+}
+
+/* Bordas adaptáveis */
+.adaptive-border,
+.border-gray-200 {
+  border-color: var(--adaptive-border-light) !important;
+}
+
+.border-gray-300 {
+  border-color: var(--adaptive-border-medium) !important;
+}
+
+.border-gray-400 {
+  border-color: var(--adaptive-border-heavy) !important;
+}
+
+/* Botões e acentos adaptáveis */
+.adaptive-primary,
+.bg-primary-600 {
+  background-color: var(--adaptive-accent-primary) !important;
+  color: var(--adaptive-text-inverse) !important;
+}
+
+.adaptive-primary:hover,
+.bg-primary-700 {
+  background-color: var(--adaptive-accent-primary) !important;
+  opacity: 0.9 !important;
+}
+
+.adaptive-success {
+  background-color: var(--adaptive-accent-success) !important;
+  color: var(--adaptive-text-inverse) !important;
+}
+
+.adaptive-warning {
+  background-color: var(--adaptive-accent-warning) !important;
+  color: var(--adaptive-text-inverse) !important;
+}
+
+.adaptive-error {
+  background-color: var(--adaptive-accent-error) !important;
+  color: var(--adaptive-text-inverse) !important;
+}
+
+/* Inputs e formulários adaptáveis */
+.adaptive-input,
+.form-input,
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea,
+select {
+  background-color: var(--adaptive-input-bg) !important;
+  border-color: var(--adaptive-input-border) !important;
+  color: var(--adaptive-input-text) !important;
+}
+
+.adaptive-input:focus,
+.form-input:focus,
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+select:focus {
+  background-color: var(--adaptive-input-bg) !important;
+  border-color: var(--adaptive-input-focus) !important;
+  color: var(--adaptive-input-text) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2) !important;
+}
+
+.adaptive-input::placeholder,
+.form-input::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: var(--adaptive-input-placeholder) !important;
+}
+
+/* Estados hover adaptáveis */
+.adaptive-hover:hover,
+.bg-gray-100:hover,
+.bg-gray-50:hover {
+  background-color: var(--adaptive-border-light) !important;
+}
+
+/* Ajustes específicos por navegador */
+.browser-firefox .adaptive-text-primary {
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.browser-safari .adaptive-text-primary {
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+.browser-chrome .adaptive-text-primary,
+.browser-edge .adaptive-text-primary {
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ajustes para alto contraste */
+.adaptive-high-contrast .adaptive-text-primary {
+  font-weight: 500 !important;
+}
+
+.adaptive-high-contrast .adaptive-border {
+  border-width: 2px !important;
+}
+
+.adaptive-high-contrast .adaptive-input:focus {
+  box-shadow: 0 0 0 4px var(--adaptive-input-focus) !important;
+}
+
+/* Ajustes para Windows */
+.os-windows .adaptive-text-primary,
+.os-windows .adaptive-text-secondary {
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* Ajustes para dispositivos móveis */
+.adaptive-mobile .adaptive-input {
+  min-height: 48px;
+  font-size: 16px; /* Evita zoom no iOS */
 }
 
 * {
