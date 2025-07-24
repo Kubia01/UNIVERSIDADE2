@@ -25,7 +25,6 @@ export interface Course {
   duration: number // in minutes
   instructor: string
   thumbnail?: string
-  image_url?: string // Compatibilidade com nome alternativo para imagem
   lessons?: Lesson[]
   is_published: boolean
   is_mandatory: boolean
