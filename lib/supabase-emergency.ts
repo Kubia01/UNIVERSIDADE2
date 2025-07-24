@@ -85,18 +85,18 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
   
   const result = await emergencyQuery(
     async () => {
-      // Query SIMPLIFICADA - sem JOINs desnecessários
+      // Query COMPLETA - incluindo thumbnail e image_url
       if (isAdmin) {
         return await supabase
           .from('courses')
-          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, created_at, updated_at')
+          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, image_url, created_at, updated_at')
           .order('created_at', { ascending: false })
           .limit(100) // AUMENTAR limite para suportar mais cursos
       } else {
         // Para usuários normais, buscar TODOS os cursos por enquanto (simplificar)
         return await supabase
           .from('courses')
-          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, created_at, updated_at')
+          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, image_url, created_at, updated_at')
           .order('created_at', { ascending: false })
           .limit(50) // AUMENTAR limite para usuários também
       }
