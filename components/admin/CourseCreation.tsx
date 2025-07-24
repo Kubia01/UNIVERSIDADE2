@@ -112,9 +112,30 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
   const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      // Validar tipo de arquivo
+      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+      if (!validTypes.includes(file.type)) {
+        alert('Por favor, selecione um arquivo de imagem válido (JPEG, PNG, GIF ou WebP)')
+        return
+      }
+      
+      // Validar tamanho (máximo 5MB)
+      const maxSize = 5 * 1024 * 1024 // 5MB
+      if (file.size > maxSize) {
+        alert('A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.')
+        return
+      }
+      
       const reader = new FileReader()
       reader.onload = (e) => {
-        setCourseData({ ...courseData, thumbnail: e.target?.result as string })
+        const result = e.target?.result as string
+        if (result) {
+          setCourseData({ ...courseData, thumbnail: result })
+          console.log('Thumbnail carregada com sucesso:', result.substring(0, 50) + '...')
+        }
+      }
+      reader.onerror = () => {
+        alert('Erro ao processar a imagem. Tente novamente.')
       }
       reader.readAsDataURL(file)
     }

@@ -1,5 +1,8 @@
 'use client'
 
+// Força renderização dinâmica para evitar problemas de SSG
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'

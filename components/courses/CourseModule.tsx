@@ -111,11 +111,32 @@ const CourseModule: React.FC<CourseModuleProps> = ({ course, user, onBack, onLes
 
   const loadUserProgress = async () => {
     try {
-      // Aqui você pode implementar a lógica para carregar o progresso do usuário
-      // Por enquanto, vamos deixar vazio
-      setUserProgress({})
+      // Carregar progresso individual das aulas
+      const { data: lessonProgress, error } = await supabase
+        .from('lesson_progress')
+        .select('lesson_id, completed_at')
+        .eq('user_id', user.id)
+        .eq('course_id', course.id)
+        .not('completed_at', 'is', null)
+
+      if (error) {
+        console.error('Erro ao carregar progresso das aulas:', error)
+        return
+      }
+
+      // Converter para objeto {lesson_id: true} para aulas concluídas
+      const progressMap: {[key: string]: boolean} = {}
+      if (lessonProgress) {
+        lessonProgress.forEach(progress => {
+          progressMap[progress.lesson_id] = true
+        })
+      }
+
+      console.log('Progresso das aulas carregado:', progressMap)
+      setUserProgress(progressMap)
     } catch (error) {
-      // Apenas log crítico se necessário
+      console.error('Erro inesperado ao carregar progresso:', error)
+      setUserProgress({})
     }
   }
 

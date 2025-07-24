@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js'
 
 // Cliente Supabase com Service Role Key (apenas no servidor)
 const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
+  process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key',
   {
     auth: {
       autoRefreshToken: false,
@@ -58,6 +58,11 @@ async function verifyAdminUser(request: NextRequest) {
 // POST - Criar usuário
 export async function POST(request: NextRequest) {
   try {
+    // Verificar se estamos em um ambiente válido
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'Configuração do servidor incompleta' }, { status: 500 })
+    }
+    
     console.log('[POST] Iniciando criação de usuário')
     
     // Verificar se é admin
@@ -198,6 +203,11 @@ export async function POST(request: NextRequest) {
 // PUT - Resetar senha
 export async function PUT(request: NextRequest) {
   try {
+    // Verificar se estamos em um ambiente válido
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'Configuração do servidor incompleta' }, { status: 500 })
+    }
+    
     console.log('[PUT] Iniciando reset de senha')
     
     // Verificar se é admin
@@ -248,6 +258,10 @@ export async function PUT(request: NextRequest) {
 // DELETE - Deletar usuário
 export async function DELETE(request: NextRequest) {
   try {
+    // Verificar se estamos em um ambiente válido
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      return NextResponse.json({ error: 'Configuração do servidor incompleta' }, { status: 500 })
+    }
     console.log('[DELETE] Iniciando deleção de usuário')
     
     // Verificar se é admin

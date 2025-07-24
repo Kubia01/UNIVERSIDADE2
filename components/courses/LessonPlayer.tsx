@@ -467,34 +467,62 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
     }
   }
 
-  // Funções auxiliares para detectar tipos de URL
+  // Funções auxiliares para detectar tipos de URL (melhoradas)
   const isYouTubeUrl = (url: string) => {
-    return /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)/.test(url)
+    if (!url || typeof url !== 'string') return false
+    return /(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)/.test(url)
   }
 
   const isVimeoUrl = (url: string) => {
-    return /vimeo\.com\//.test(url)
+    if (!url || typeof url !== 'string') return false
+    return /(?:vimeo\.com\/(?:video\/)?(\d+))|(?:player\.vimeo\.com\/video\/(\d+))/.test(url)
   }
 
   const isDirectVideoUrl = (url: string) => {
-    return /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv)(\?.*)?$/i.test(url)
+    if (!url || typeof url !== 'string') return false
+    return /\.(mp4|webm|ogg|avi|mov|wmv|flv|mkv|m4v)(\?.*)?$/i.test(url)
   }
 
   const getYouTubeEmbedUrl = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
-    const match = url.match(regExp)
-    if (match && match[2].length === 11) {
-      return `https://www.youtube.com/embed/${match[2]}?autoplay=0&rel=0`
+    if (!url || typeof url !== 'string') return url
+    
+    // Diferentes padrões de URL do YouTube
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=)([^&\n?#]+)/,
+      /(?:youtu\.be\/)([^&\n?#]+)/,
+      /(?:youtube\.com\/embed\/)([^&\n?#]+)/,
+      /(?:youtube\.com\/v\/)([^&\n?#]+)/
+    ]
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern)
+      if (match && match[1] && match[1].length === 11) {
+        return `https://www.youtube.com/embed/${match[1]}?autoplay=0&rel=0&modestbranding=1`
+      }
     }
+    
+    console.warn('URL do YouTube não reconhecida:', url)
     return url
   }
 
   const getVimeoEmbedUrl = (url: string) => {
-    const regExp = /vimeo\.com\/(\d+)/
-    const match = url.match(regExp)
-    if (match) {
-      return `https://player.vimeo.com/video/${match[1]}?autoplay=0`
+    if (!url || typeof url !== 'string') return url
+    
+    // Diferentes padrões de URL do Vimeo
+    const patterns = [
+      /vimeo\.com\/(\d+)/,
+      /vimeo\.com\/video\/(\d+)/,
+      /player\.vimeo\.com\/video\/(\d+)/
+    ]
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern)
+      if (match && match[1]) {
+        return `https://player.vimeo.com/video/${match[1]}?autoplay=0&byline=0&portrait=0`
+      }
     }
+    
+    console.warn('URL do Vimeo não reconhecida:', url)
     return url
   }
 
