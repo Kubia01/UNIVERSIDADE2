@@ -288,16 +288,19 @@ const CertificateViewer: React.FC<CertificateViewerProps> = ({ user }) => {
 
               {/* Modal Actions */}
               <div className="flex items-center space-x-3 mt-6">
-                <button
-                  onClick={() => handleDownloadCertificate(selectedCertificate)}
-                  className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Baixar Certificado
-                </button>
+                {/* Ocultar botão de download para administradores no modal */}
+                {user.role !== 'admin' && (
+                  <button
+                    onClick={() => handleDownloadCertificate(selectedCertificate)}
+                    className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar Certificado
+                  </button>
+                )}
                 <button
                   onClick={() => handleShareCertificate(selectedCertificate)}
-                  className="flex-1 flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
+                  className={`${user.role === 'admin' ? 'flex-1' : 'flex-1'} flex items-center justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors`}
                 >
                   <Share2 className="h-4 w-4 mr-2" />
                   Compartilhar

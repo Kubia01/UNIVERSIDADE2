@@ -248,15 +248,23 @@ const LessonPlayer: React.FC<LessonPlayerProps> = ({
         .select('*')
         .eq('user_id', user.id)
         .eq('lesson_id', lesson.id)
-        .single()
+        .maybeSingle()
 
-      if (data && !error) {
+      if (error && error.code !== 'PGRST116') {
+        console.error('Erro ao carregar progresso da aula:', error)
+        return
+      }
+
+      if (data) {
         setIsCompleted(data.completed_at !== null)
-        console.log('Progresso carregado:', data)
+        console.log('Progresso carregado:', data, 'Concluído:', data.completed_at !== null)
+      } else {
+        setIsCompleted(false)
+        console.log('Nenhum progresso encontrado para esta aula - definindo como não concluída')
       }
     } catch (error) {
-      // Não há progresso salvo ainda, isso é normal
-      console.log('Nenhum progresso encontrado para esta aula')
+      console.error('Erro inesperado ao carregar progresso:', error)
+      setIsCompleted(false)
     }
   }
 

@@ -97,8 +97,21 @@ export default function HomePage() {
     if (user) {
       // Usar selectedEmployee se existe, senão usar user
       const targetUser = selectedEmployee || user
+      
+      // Proteção contra loops infinitos
+      if (!targetUser.id) {
+        console.error('🚨 [Dashboard] Usuário sem ID detectado:', targetUser)
+        return
+      }
+      
       console.log('🔄 [Dashboard] Recarregando para:', targetUser.name, 'ID:', targetUser.id)
-      loadDashboardData(targetUser)
+      
+      // Debounce para evitar múltiplas chamadas rápidas quando há problemas de cache
+      const timeoutId = setTimeout(() => {
+        loadDashboardData(targetUser)
+      }, 200)
+      
+      return () => clearTimeout(timeoutId)
     }
   }, [selectedEmployee, refreshTrigger, user]) // Adicionar user como dependência
 
@@ -240,8 +253,20 @@ export default function HomePage() {
       return
     }
 
+    // Proteção contra usuários inválidos
+    if (!currentUser.name || !currentUser.email) {
+      console.error('🚨 [Dashboard] Usuário com dados incompletos:', currentUser)
+      return
+    }
+
     // USAR targetUserId para cache específico do usuário
     const targetUserId = selectedEmployee?.id || currentUser.id
+    
+    // Validar targetUserId
+    if (!targetUserId) {
+      console.error('🚨 [Dashboard] targetUserId inválido')
+      return
+    }
     
     // Verificar cache PRIMEIRO - PRIORIDADE MÁXIMA
     const cachedDashboard = cacheHelpers.getDashboard(targetUserId) as any
@@ -471,7 +496,31 @@ export default function HomePage() {
       cacheHelpers.setDashboard(targetUserId, dashboardData)
       
     } catch (error) {
-      console.error('Erro ao carregar dados:', error)
+      console.error('💥 [Dashboard] Erro crítico ao carregar dados para:', targetUserId, error)
+      
+      // Tentar carregar dados básicos em caso de erro
+      try {
+        setStats({
+          totalCourses: 0,
+          completedCourses: 0,
+          totalWatchTime: 0,
+          certificatesEarned: 0,
+          totalUsers: 0
+        })
+        setRecentCourses([])
+        setDashboardProgress({})
+        
+        // Se for admin e o erro foi nos employees, tentar carregar do cache
+        if (currentUser?.role === 'admin') {
+          const cachedUsers = cacheHelpers.getUsers() as User[]
+          if (cachedUsers && cachedUsers.length > 0) {
+            console.log('🔄 [Dashboard] Usando cache de usuários como fallback')
+            setEmployees(cachedUsers)
+          }
+        }
+      } catch (fallbackError) {
+        console.error('💥 [Dashboard] Erro mesmo no fallback:', fallbackError)
+      }
     }
   }
 
@@ -704,37 +753,65 @@ export default function HomePage() {
                   console.log('🔍 [Dashboard] Renderizando dropdown. Employees:', employees.length, employees.map(e => ({ id: e.id, name: e.name })))
                   return null
                 })()}
-                <select
-                  value={selectedEmployee?.id || ''}
-                  onChange={(e) => {
-                    const employeeId = e.target.value
-                    const employee = employees.find(emp => emp.id === employeeId) || null
-                    setSelectedEmployee(employee)
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  disabled={employees.length === 0}
-                >
-                  <option value="">
-                    {employees.length === 0 ? 'Carregando usuários...' : 'Visão Geral (Todos)'}
-                  </option>
-                  {employees.map((employee) => (
-                    <option key={employee.id} value={employee.id}>
-                      {employee.name} - {employee.department}
+                <div className="flex space-x-2">
+                  <select
+                    value={selectedEmployee?.id || ''}
+                    onChange={(e) => {
+                      const employeeId = e.target.value
+                      const employee = employees.find(emp => emp.id === employeeId) || null
+                      console.log('👤 [Dashboard] Usuário selecionado:', employee?.name || 'Todos')
+                      setSelectedEmployee(employee)
+                    }}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    disabled={employees.length === 0}
+                  >
+                    <option value="">
+                      {employees.length === 0 ? 'Carregando usuários...' : 'Visão Geral (Todos)'}
                     </option>
-                  ))}
-                  {employees.length === 0 && (
-                    <option value="" disabled>
-                      Nenhum usuário encontrado
-                    </option>
-                  )}
-                </select>
+                    {employees.map((employee) => (
+                      <option key={employee.id} value={employee.id}>
+                        {employee.name} - {employee.department}
+                      </option>
+                    ))}
+                    {employees.length === 0 && (
+                      <option value="" disabled>
+                        Nenhum usuário encontrado
+                      </option>
+                    )}
+                  </select>
+                  
+                  {/* Botão de recarregar */}
+                  <button
+                    onClick={() => {
+                      console.log('🔄 [Dashboard] Recarregando dados manualmente')
+                      // Limpar cache se necessário
+                      const targetUserId = selectedEmployee?.id || user.id
+                      if (window.localStorage) {
+                        const cacheKeys = Object.keys(localStorage).filter(key => 
+                          key.includes(`dashboard-${targetUserId}`) || 
+                          key.includes('users-cache')
+                        )
+                        cacheKeys.forEach(key => localStorage.removeItem(key))
+                      }
+                      
+                      // Forçar recarregamento
+                      setRefreshTrigger(prev => prev + 1)
+                      setEmployees([]) // Limpar lista para mostrar loading
+                    }}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+                    title="Recarregar dados do dashboard"
+                  >
+                    🔄
+                  </button>
+                </div>
+                
                 {employees.length === 0 && user?.role === 'admin' && (
                   <div className="mt-1 text-xs">
                     <p className="text-blue-600">
                       ℹ️ Carregando usuários em segundo plano...
                     </p>
                     <p className="text-gray-500 mt-1">
-                      Se a lista não carregar, verifique as políticas RLS no Supabase.
+                      Se a lista não carregar, clique no botão 🔄 para recarregar.
                     </p>
                   </div>
                 )}
