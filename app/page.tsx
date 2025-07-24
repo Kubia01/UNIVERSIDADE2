@@ -63,6 +63,8 @@ export default function HomePage() {
   const [recentCourses, setRecentCourses] = useState<any[]>([])
   const [dashboardProgress, setDashboardProgress] = useState<{[key: string]: number}>({})
   const [refreshTrigger, setRefreshTrigger] = useState(0)
+  const [dashboardLoading, setDashboardLoading] = useState(false)
+  const [loadingTimeout, setLoadingTimeout] = useState(false)
   const router = useRouter()
   
   // Status de conexão
@@ -101,28 +103,33 @@ export default function HomePage() {
     }
   }, [employees])
 
+  // Carregar dados iniciais quando user é definido pela primeira vez
+  useEffect(() => {
+    if (user && !loading) {
+      console.log('🚀 [Dashboard] Carregamento inicial para:', user.name, 'ID:', user.id)
+      loadDashboardData(user)
+    }
+  }, [user, loading]) // Carregar apenas quando user muda ou loading termina
+
   // Recarregar dados quando funcionário selecionado mudar ou quando houver trigger
   useEffect(() => {
-    if (user) {
-      // Usar selectedEmployee se existe, senão usar user
-      const targetUser = selectedEmployee || user
-      
+    if (user && selectedEmployee) {
       // Proteção contra loops infinitos
-      if (!targetUser.id) {
-        console.error('🚨 [Dashboard] Usuário sem ID detectado:', targetUser)
+      if (!selectedEmployee.id) {
+        console.error('🚨 [Dashboard] Employee sem ID detectado:', selectedEmployee)
         return
       }
       
-      console.log('🔄 [Dashboard] Recarregando para:', targetUser.name, 'ID:', targetUser.id)
+      console.log('🔄 [Dashboard] Recarregando para employee:', selectedEmployee.name, 'ID:', selectedEmployee.id)
       
       // Debounce para evitar múltiplas chamadas rápidas quando há problemas de cache
       const timeoutId = setTimeout(() => {
-        loadDashboardData(targetUser)
-      }, 200)
+        loadDashboardData(selectedEmployee)
+      }, 100) // Reduzir delay para melhor responsividade
       
       return () => clearTimeout(timeoutId)
     }
-  }, [selectedEmployee, refreshTrigger, user]) // Adicionar user como dependência
+  }, [selectedEmployee, refreshTrigger]) // Apenas quando employee muda ou há trigger
 
   const checkUser = async () => {
     try {
@@ -166,14 +173,11 @@ export default function HomePage() {
               .eq('email', currentUser.email)
               .maybeSingle()
             
-            if (existingProfile) {
-              console.log('Perfil encontrado pelo email:', existingProfile)
-              setUser(existingProfile)
-              setTimeout(() => {
-                loadDashboardData(existingProfile)
-              }, 500)
-              return
-            }
+                          if (existingProfile) {
+                console.log('Perfil encontrado pelo email:', existingProfile)
+                setUser(existingProfile)
+                return
+              }
             
             // Se realmente não existe, tentar criar
             const { data: newProfile, error: createError } = await supabase
@@ -204,9 +208,6 @@ export default function HomePage() {
                 if (retryProfile) {
                   console.log('Perfil encontrado na segunda tentativa:', retryProfile)
                   setUser(retryProfile)
-                  setTimeout(() => {
-                    loadDashboardData(retryProfile)
-                  }, 500)
                   return
                 }
               }
@@ -216,12 +217,7 @@ export default function HomePage() {
             } else {
               console.log('Perfil criado com sucesso:', newProfile)
               setUser(newProfile)
-              // Carregar dados do dashboard para o perfil recém-criado
-              setTimeout(() => {
-                console.log('Carregando dados para perfil recém-criado...')
-                loadDashboardData(newProfile)
-              }, 500)
-              return // Evitar chamar loadDashboardData novamente abaixo
+              return // Evitar carregar dados novamente abaixo
             }
           } else {
             router.push('/login')
@@ -237,12 +233,6 @@ export default function HomePage() {
           router.push('/login')
           return
         }
-        
-        // Carregar dados do dashboard após definir o usuário
-        setTimeout(() => {
-          console.log('Iniciando carregamento dos dados do dashboard...')
-          loadDashboardData(profile) // Passando o profile diretamente
-        }, 500)
       } else {
         console.log('getCurrentUser retornou null ou sem ID')
         router.push('/login')
@@ -268,6 +258,15 @@ export default function HomePage() {
       return
     }
 
+    // Iniciar loading state
+    setDashboardLoading(true)
+    setLoadingTimeout(false)
+    
+    // Timeout para mostrar mensagem se demorar muito
+    const timeoutId = setTimeout(() => {
+      setLoadingTimeout(true)
+    }, 3000) // 3 segundos
+
     // USAR targetUserId para cache específico do usuário
     const targetUserId = selectedEmployee?.id || currentUser.id
     
@@ -289,6 +288,8 @@ export default function HomePage() {
       if (cachedDashboard.employees && cachedDashboard.employees.length > 0 && currentUser?.role === 'admin') {
         console.log('📊 [Dashboard] Restaurando employees do cache:', cachedDashboard.employees.length)
         setEmployees(cachedDashboard.employees)
+        clearTimeout(timeoutId)
+        setDashboardLoading(false)
         return
       }
       
@@ -524,6 +525,11 @@ export default function HomePage() {
       }
       cacheHelpers.setDashboard(targetUserId, dashboardData)
       
+      // Limpar loading state - sucesso
+      clearTimeout(timeoutId)
+      setDashboardLoading(false)
+      setLoadingTimeout(false)
+      
     } catch (error) {
       console.error('💥 [Dashboard] Erro crítico ao carregar dados para:', targetUserId, error)
       
@@ -550,6 +556,11 @@ export default function HomePage() {
       } catch (fallbackError) {
         console.error('💥 [Dashboard] Erro mesmo no fallback:', fallbackError)
       }
+      
+      // Limpar loading state - erro
+      clearTimeout(timeoutId)
+      setDashboardLoading(false)
+      setLoadingTimeout(false)
     }
   }
 
@@ -839,6 +850,25 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      {/* Loading Overlay para Dashboard */}
+      {dashboardLoading && (
+        <div className="relative">
+          <div className="absolute inset-0 bg-white bg-opacity-75 z-10 flex items-center justify-center rounded-lg">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
+              <p className="text-sm font-medium text-gray-600 mb-2">
+                {loadingTimeout ? 'Conectando com o servidor...' : 'Carregando dashboard...'}
+              </p>
+              {loadingTimeout && (
+                <p className="text-xs text-gray-500">
+                  Isso pode demorar alguns segundos devido à conectividade
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
