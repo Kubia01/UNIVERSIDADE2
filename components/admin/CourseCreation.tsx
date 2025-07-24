@@ -110,35 +110,71 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
   ]
 
   const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('🖼️ [CourseCreation] handleThumbnailUpload executado')
     const file = e.target.files?.[0]
-    if (file) {
-      // Validar tipo de arquivo
-      const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
-      if (!validTypes.includes(file.type)) {
-        alert('Por favor, selecione um arquivo de imagem válido (JPEG, PNG, GIF ou WebP)')
-        return
-      }
-      
-      // Validar tamanho (máximo 5MB)
-      const maxSize = 5 * 1024 * 1024 // 5MB
-      if (file.size > maxSize) {
-        alert('A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.')
-        return
-      }
-      
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const result = e.target?.result as string
-        if (result) {
-          setCourseData({ ...courseData, thumbnail: result })
-          console.log('Thumbnail carregada com sucesso:', result.substring(0, 50) + '...')
-        }
-      }
-      reader.onerror = () => {
-        alert('Erro ao processar a imagem. Tente novamente.')
-      }
-      reader.readAsDataURL(file)
+    
+    if (!file) {
+      console.log('🖼️ [CourseCreation] Nenhum arquivo selecionado')
+      return
     }
+    
+    console.log('🖼️ [CourseCreation] Arquivo selecionado:', {
+      name: file.name,
+      size: file.size,
+      type: file.type
+    })
+    
+    // Validar tipo de arquivo
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+    if (!validTypes.includes(file.type)) {
+      console.error('🖼️ [CourseCreation] Tipo de arquivo inválido:', file.type)
+      alert('Por favor, selecione um arquivo de imagem válido (JPEG, PNG, GIF ou WebP)')
+      return
+    }
+    
+    // Validar tamanho (máximo 5MB)
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (file.size > maxSize) {
+      console.error('🖼️ [CourseCreation] Arquivo muito grande:', file.size)
+      alert('A imagem é muito grande. Por favor, selecione uma imagem menor que 5MB.')
+      return
+    }
+    
+    console.log('🖼️ [CourseCreation] Iniciando leitura do arquivo...')
+    const reader = new FileReader()
+    
+    reader.onload = (e) => {
+      const result = e.target?.result as string
+      console.log('🖼️ [CourseCreation] FileReader onload executado, result length:', result?.length)
+      
+      if (result) {
+        console.log('🖼️ [CourseCreation] Atualizando courseData com thumbnail')
+        setCourseData(prev => {
+          const updated = { ...prev, thumbnail: result }
+          console.log('🖼️ [CourseCreation] courseData atualizado:', { 
+            ...updated, 
+            thumbnail: `${result.substring(0, 50)}...` 
+          })
+          return updated
+        })
+        
+        console.log('✅ [CourseCreation] Thumbnail carregada com sucesso!')
+        
+        // Mostrar notificação de sucesso
+        setTimeout(() => {
+          alert('✅ Imagem carregada com sucesso!')
+        }, 100)
+      } else {
+        console.error('🖼️ [CourseCreation] Result vazio do FileReader')
+      }
+    }
+    
+    reader.onerror = (error) => {
+      console.error('🖼️ [CourseCreation] Erro no FileReader:', error)
+      alert('Erro ao processar a imagem. Tente novamente.')
+    }
+    
+    reader.readAsDataURL(file)
   }
 
   const handleVideoUpload = async (file: File) => {

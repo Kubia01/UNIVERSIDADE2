@@ -307,13 +307,7 @@ const CertificateManagement: React.FC = () => {
                       >
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button
-                        onClick={() => handleDownloadCertificate(certificate)}
-                        className="p-2 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
-                        title="Baixar certificado"
-                      >
-                        <Download className="h-4 w-4" />
-                      </button>
+                      {/* Botão de download removido para administradores */}
                     </div>
                   </td>
                 </tr>
