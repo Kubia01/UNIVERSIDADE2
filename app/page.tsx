@@ -92,6 +92,14 @@ export default function HomePage() {
     })
   }, [])
 
+  // Monitorar mudanças no estado employees
+  useEffect(() => {
+    console.log('👥 [Dashboard] Estado employees mudou:', employees.length)
+    if (employees.length > 0) {
+      console.log('✅ [Dashboard] Employees carregados com sucesso no estado')
+    }
+  }, [employees])
+
   // Recarregar dados quando funcionário selecionado mudar ou quando houver trigger
   useEffect(() => {
     if (user) {
@@ -362,17 +370,11 @@ export default function HomePage() {
               
               console.log('✅ [Dashboard] Usuários carregados da base:', formattedUsers.length)
               
-              // Garantir que o estado seja atualizado
-              setEmployees(formattedUsers)
-              
-              // Verificar se realmente foi atualizado
-              setTimeout(() => {
-                console.log('🔍 [Dashboard] Verificação do estado employees após setEmployees:', employees.length)
-                if (employees.length === 0 && formattedUsers.length > 0) {
-                  console.log('⚠️ [Dashboard] Estado não foi atualizado, forçando novamente')
-                  setEmployees([...formattedUsers])
-                }
-              }, 100)
+              // Usar callback para garantir atualização
+              setEmployees(prev => {
+                console.log('🔄 [Dashboard] Atualizando employees de', prev.length, 'para', formattedUsers.length)
+                return formattedUsers
+              })
               
               // Salvar no cache por 30 minutos
               cacheHelpers.setUsers(formattedUsers)

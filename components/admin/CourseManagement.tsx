@@ -140,30 +140,24 @@ const CourseManagement: React.FC = () => {
       // Remover o campo lessons antes de salvar no banco
       const { lessons, ...courseToSave } = courseData;
       
-      // Garantir que a thumbnail seja salva como image_url e validar tamanho
+      // Validar tamanho da thumbnail
       if (courseToSave.thumbnail) {
         // Verificar se a thumbnail não é muito grande (limite de 50KB para base64)
         if (courseToSave.thumbnail.length > 50000) {
           console.log('⚠️ [CourseManagement] Thumbnail muito grande, removendo para evitar erro 400')
           console.log('⚠️ [CourseManagement] Tamanho:', courseToSave.thumbnail.length, 'bytes')
           delete courseToSave.thumbnail
-          delete courseToSave.image_url
         } else {
-          courseToSave.image_url = courseToSave.thumbnail;
-          console.log('🖼️ [CourseManagement] Convertendo thumbnail para image_url')
+          console.log('🖼️ [CourseManagement] Thumbnail validada - tamanho OK')
         }
       }
       
-      console.log('🔍 [CourseManagement] Salvando curso:', courseToSave)
-      console.log('🖼️ [CourseManagement] Thumbnail no courseToSave:', courseToSave.thumbnail ? 'SIM' : 'NÃO')
-      console.log('🖼️ [CourseManagement] image_url no courseToSave:', courseToSave.image_url ? 'SIM' : 'NÃO')
-      if (courseToSave.thumbnail) {
-        console.log('🖼️ [CourseManagement] Thumbnail length:', courseToSave.thumbnail.length)
-      }
-      if (courseToSave.image_url) {
-        console.log('🖼️ [CourseManagement] image_url length:', courseToSave.image_url.length)
-      }
-      console.log('📚 [CourseManagement] Aulas para salvar:', lessons.length)
+              console.log('🔍 [CourseManagement] Salvando curso:', courseToSave)
+        console.log('🖼️ [CourseManagement] Thumbnail no courseToSave:', courseToSave.thumbnail ? 'SIM' : 'NÃO')
+        if (courseToSave.thumbnail) {
+          console.log('🖼️ [CourseManagement] Thumbnail length:', courseToSave.thumbnail.length)
+        }
+        console.log('📚 [CourseManagement] Aulas para salvar:', lessons.length)
       
       if (editingCourse) {
         // Atualizar curso existente

@@ -453,7 +453,6 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
             console.log('[CourseViewer] Renderizando card do módulo:', course)
             console.log('[CourseViewer] 🖼️ Imagem disponível:', {
               thumbnail: course.thumbnail ? 'SIM (' + course.thumbnail.substring(0, 50) + '...)' : 'NÃO',
-              image_url: course.image_url ? 'SIM (' + course.image_url.substring(0, 50) + '...)' : 'NÃO',
               title: course.title
             })
             const lessonCount = courseLessons[course.id]?.length || 0
@@ -461,9 +460,9 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
               <div key={course.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-300 group">
                 {/* Module Thumbnail */}
                 <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 h-48">
-                  {course.thumbnail || course.image_url ? (
+                  {course.thumbnail ? (
                     <img
-                      src={course.thumbnail || course.image_url}
+                      src={course.thumbnail}
                       alt={course.title}
                       className="w-full h-full object-cover"
                       onError={(e) => {
