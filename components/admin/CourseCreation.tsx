@@ -149,54 +149,97 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
       
       if (result) {
         // Se a imagem for muito grande, comprimir
-        if (result.length > 50000) {
+        if (result.length > 75000) { // Aumentar limite para 75KB
           console.log('⚠️ [CourseCreation] Imagem muito grande, comprimindo...')
+          console.log('⚠️ [CourseCreation] Tamanho original:', result.length, 'chars')
           
           const img = new Image()
           img.onload = () => {
-            const canvas = document.createElement('canvas')
-            const ctx = canvas.getContext('2d')
-            
-            // Reduzir tamanho para máximo 400x300
-            const maxWidth = 400
-            const maxHeight = 300
-            let { width, height } = img
-            
-            if (width > height) {
+            try {
+              const canvas = document.createElement('canvas')
+              const ctx = canvas.getContext('2d')
+              
+              if (!ctx) {
+                console.error('❌ [CourseCreation] Erro ao obter contexto do canvas')
+                alert('Erro ao processar imagem. Tente uma imagem menor.')
+                return
+              }
+              
+              // Reduzir tamanho para máximo 400x300 (melhor qualidade)
+              const maxWidth = 400
+              const maxHeight = 300
+              let { width, height } = img
+              
+              // Calcular novo tamanho mantendo proporção
+              const aspectRatio = width / height
+              if (width > height) {
+                if (width > maxWidth) {
+                  width = maxWidth
+                  height = width / aspectRatio
+                }
+              } else {
+                if (height > maxHeight) {
+                  height = maxHeight
+                  width = height * aspectRatio
+                }
+              }
+              
+              // Garantir que não exceda nenhum limite
               if (width > maxWidth) {
-                height = (height * maxWidth) / width
                 width = maxWidth
+                height = width / aspectRatio
               }
-            } else {
               if (height > maxHeight) {
-                width = (width * maxHeight) / height
                 height = maxHeight
+                width = height * aspectRatio
               }
-            }
-            
-            canvas.width = width
-            canvas.height = height
-            ctx?.drawImage(img, 0, 0, width, height)
-            
-            // Converter com qualidade reduzida
-            const compressedResult = canvas.toDataURL('image/jpeg', 0.6)
-            console.log('✅ [CourseCreation] Imagem comprimida de', result.length, 'para', compressedResult.length, 'chars')
-            
-            console.log('🖼️ [CourseCreation] Atualizando courseData com thumbnail comprimida')
-            setCourseData(prev => {
-              const updated = { ...prev, thumbnail: compressedResult }
-              console.log('🖼️ [CourseCreation] courseData atualizado:', { 
-                ...updated, 
-                thumbnail: `${compressedResult.substring(0, 50)}...` 
+              
+              canvas.width = Math.round(width)
+              canvas.height = Math.round(height)
+              
+              // Melhorar qualidade da renderização
+              ctx.imageSmoothingEnabled = true
+              ctx.imageSmoothingQuality = 'high'
+              
+              ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+              
+              // Tentar diferentes qualidades até obter tamanho adequado
+              let quality = 0.8
+              let compressedResult = canvas.toDataURL('image/jpeg', quality)
+              
+              // Se ainda estiver muito grande, reduzir qualidade
+              while (compressedResult.length > 75000 && quality > 0.3) {
+                quality -= 0.1
+                compressedResult = canvas.toDataURL('image/jpeg', quality)
+              }
+              
+              console.log('✅ [CourseCreation] Imagem comprimida de', result.length, 'para', compressedResult.length, 'chars (qualidade:', quality, ')')
+              
+              console.log('🖼️ [CourseCreation] Atualizando courseData com thumbnail comprimida')
+              setCourseData(prev => {
+                const updated = { ...prev, thumbnail: compressedResult }
+                console.log('🖼️ [CourseCreation] courseData atualizado:', { 
+                  ...updated, 
+                  thumbnail: `${compressedResult.substring(0, 50)}...` 
+                })
+                return updated
               })
-              return updated
-            })
-            
-            console.log('✅ [CourseCreation] Thumbnail comprimida carregada com sucesso!')
-            setTimeout(() => {
-              alert('✅ Imagem comprimida e carregada com sucesso!')
-            }, 100)
+              
+              console.log('✅ [CourseCreation] Thumbnail comprimida carregada com sucesso!')
+              setTimeout(() => {
+                alert('✅ Imagem comprimida e carregada com sucesso!')
+              }, 100)
+            } catch (error) {
+              console.error('❌ [CourseCreation] Erro ao comprimir imagem:', error)
+              alert('Erro ao comprimir imagem. Tente uma imagem menor ou diferente.')
+            }
           }
+          
+          img.onerror = () => {
+            console.error('❌ [CourseCreation] Erro ao carregar imagem para compressão')
+            alert('Erro ao processar imagem. Verifique se o arquivo é uma imagem válida.')
+          }
+          
           img.src = result
         } else {
           console.log('🖼️ [CourseCreation] Atualizando courseData com thumbnail')

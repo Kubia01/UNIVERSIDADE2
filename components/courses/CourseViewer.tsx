@@ -460,18 +460,27 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
               <div key={course.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-300 group">
                 {/* Module Thumbnail */}
                 <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 h-48">
-                  {course.thumbnail ? (
+                  {course.thumbnail && course.thumbnail.trim() !== '' ? (
                     <img
                       src={course.thumbnail}
                       alt={course.title}
                       className="w-full h-full object-cover"
+                      style={{ backgroundColor: 'transparent' }}
+                      onLoad={(e) => {
+                        console.log('[CourseViewer] ✅ Thumbnail carregada com sucesso para:', course.title)
+                      }}
                       onError={(e) => {
+                        console.error('[CourseViewer] ❌ Erro ao carregar thumbnail para:', course.title)
+                        console.error('[CourseViewer] ❌ URL da thumbnail:', course.thumbnail?.substring(0, 100) + '...')
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                         // Mostrar ícone de fallback
                         const parent = target.parentElement;
-                        if (parent) {
-                          parent.innerHTML = `<div class="w-full h-full flex items-center justify-center"><svg class="h-16 w-16 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg></div>`;
+                        if (parent && !parent.querySelector('.fallback-icon')) {
+                          const fallbackDiv = document.createElement('div');
+                          fallbackDiv.className = 'fallback-icon w-full h-full flex items-center justify-center';
+                          fallbackDiv.innerHTML = `<svg class="h-16 w-16 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>`;
+                          parent.appendChild(fallbackDiv);
                         }
                       }}
                     />

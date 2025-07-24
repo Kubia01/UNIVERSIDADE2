@@ -142,11 +142,57 @@ const CourseManagement: React.FC = () => {
       
       // Validar tamanho da thumbnail
       if (courseToSave.thumbnail) {
-        // Verificar se a thumbnail não é muito grande (limite de 50KB para base64)
-        if (courseToSave.thumbnail.length > 50000) {
-          console.log('⚠️ [CourseManagement] Thumbnail muito grande, removendo para evitar erro 400')
-          console.log('⚠️ [CourseManagement] Tamanho:', courseToSave.thumbnail.length, 'bytes')
-          delete courseToSave.thumbnail
+        // Aumentar limite para 100KB para base64 (cerca de 75KB de imagem real)
+        if (courseToSave.thumbnail.length > 100000) {
+          console.log('⚠️ [CourseManagement] Thumbnail muito grande, comprimindo automaticamente...')
+          console.log('⚠️ [CourseManagement] Tamanho original:', courseToSave.thumbnail.length, 'chars')
+          
+          // Tentar comprimir a imagem automaticamente
+          try {
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
+            const img = new Image()
+            
+            await new Promise((resolve, reject) => {
+              img.onload = () => {
+                // Reduzir tamanho para 300x200 máximo
+                const maxWidth = 300
+                const maxHeight = 200
+                let { width, height } = img
+                
+                if (width > height) {
+                  if (width > maxWidth) {
+                    height = (height * maxWidth) / width
+                    width = maxWidth
+                  }
+                } else {
+                  if (height > maxHeight) {
+                    width = (width * maxHeight) / height
+                    height = maxHeight
+                  }
+                }
+                
+                canvas.width = width
+                canvas.height = height
+                ctx!.drawImage(img, 0, 0, width, height)
+                
+                // Comprimir para JPEG com qualidade 0.7
+                const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7)
+                courseToSave.thumbnail = compressedDataUrl
+                console.log('✅ [CourseManagement] Thumbnail comprimida para:', compressedDataUrl.length, 'chars')
+                resolve(compressedDataUrl)
+              }
+              img.onerror = reject
+              img.src = courseToSave.thumbnail
+            })
+          } catch (error) {
+            console.error('❌ [CourseManagement] Erro ao comprimir thumbnail:', error)
+            // Se falhar, manter a original se não for muito grande
+            if (courseToSave.thumbnail.length > 150000) {
+              console.log('⚠️ [CourseManagement] Thumbnail muito grande mesmo após erro, removendo')
+              delete courseToSave.thumbnail
+            }
+          }
         } else {
           console.log('🖼️ [CourseManagement] Thumbnail validada - tamanho OK')
         }
@@ -549,11 +595,18 @@ const CourseManagement: React.FC = () => {
             <div key={course.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-shadow">
               {/* Course Thumbnail */}
               <div className="aspect-w-16 aspect-h-9 bg-gray-200 dark:bg-gray-700">
-                {course.thumbnail ? (
+                {course.thumbnail && course.thumbnail.trim() !== '' ? (
                   <img
                     src={course.thumbnail}
                     alt={course.title}
                     className="w-full h-48 object-cover"
+                    onLoad={() => {
+                      console.log('[CourseManagement] ✅ Thumbnail carregada com sucesso para:', course.title)
+                    }}
+                    onError={(e) => {
+                      console.error('[CourseManagement] ❌ Erro ao carregar thumbnail para:', course.title)
+                      console.error('[CourseManagement] ❌ URL da thumbnail:', course.thumbnail?.substring(0, 100) + '...')
+                    }}
                   />
                 ) : (
                   <div className="w-full h-48 flex items-center justify-center">
