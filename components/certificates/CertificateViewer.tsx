@@ -42,6 +42,12 @@ const CertificateViewer: React.FC<CertificateViewerProps> = ({ user }) => {
   }
 
   const handleDownloadCertificate = (certificate: CertificateWithDetails) => {
+    // Verificar se é administrador e bloquear o download
+    if (user.role === 'admin') {
+      alert('Administradores não podem baixar certificados. Esta funcionalidade é exclusiva para usuários comuns.')
+      return
+    }
+    
     if (certificate.certificate_url) {
       window.open(certificate.certificate_url, '_blank')
     } else {
@@ -171,18 +177,23 @@ const CertificateViewer: React.FC<CertificateViewerProps> = ({ user }) => {
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => handleViewCertificate(certificate)}
-                    className="flex-1 flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm"
+                    className={`${user.role === 'admin' ? 'flex-1' : 'flex-1'} flex items-center justify-center px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm`}
                   >
                     <Eye className="h-4 w-4 mr-1" />
                     Visualizar
                   </button>
-                  <button
-                    onClick={() => handleDownloadCertificate(certificate)}
-                    className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    Baixar
-                  </button>
+                  
+                  {/* Ocultar botão de download para administradores */}
+                  {user.role !== 'admin' && (
+                    <button
+                      onClick={() => handleDownloadCertificate(certificate)}
+                      className="flex-1 flex items-center justify-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Baixar
+                    </button>
+                  )}
+                  
                   <button
                     onClick={() => handleShareCertificate(certificate)}
                     className="p-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"

@@ -16,6 +16,95 @@
     --background-start-rgb: 0, 0, 0;
     --background-end-rgb: 0, 0, 0;
   }
+  
+  /* Cores para textos e elementos no tema escuro */
+  .text-gray-900 {
+    color: rgb(243, 244, 246) !important;
+  }
+  
+  .text-gray-800 {
+    color: rgb(229, 231, 235) !important;
+  }
+  
+  .text-gray-700 {
+    color: rgb(209, 213, 219) !important;
+  }
+  
+  .text-gray-600 {
+    color: rgb(156, 163, 175) !important;
+  }
+  
+  .text-gray-500 {
+    color: rgb(107, 114, 128) !important;
+  }
+  
+  .text-gray-400 {
+    color: rgb(75, 85, 99) !important;
+  }
+  
+  /* Cards e fundos no tema escuro */
+  .card,
+  .bg-white {
+    background-color: rgb(31, 41, 55) !important;
+    border-color: rgb(55, 65, 81) !important;
+  }
+  
+  /* Botões e links no tema escuro */
+  .bg-primary-600 {
+    background-color: rgb(59, 130, 246) !important;
+  }
+  
+  .bg-primary-700 {
+    background-color: rgb(37, 99, 235) !important;
+  }
+  
+  /* Bordas no tema escuro */
+  .border-gray-200 {
+    border-color: rgb(55, 65, 81) !important;
+  }
+  
+  .border-gray-300 {
+    border-color: rgb(75, 85, 99) !important;
+  }
+  
+  /* Inputs e formulários no tema escuro */
+  .form-input,
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  textarea,
+  select {
+    background-color: rgb(31, 41, 55) !important;
+    border-color: rgb(55, 65, 81) !important;
+    color: rgb(243, 244, 246) !important;
+  }
+  
+  .form-input:focus,
+  input[type="text"]:focus,
+  input[type="email"]:focus,
+  input[type="password"]:focus,
+  textarea:focus,
+  select:focus {
+    background-color: rgb(31, 41, 55) !important;
+    border-color: rgb(59, 130, 246) !important;
+    color: rgb(243, 244, 246) !important;
+  }
+  
+  /* Placeholders no tema escuro */
+  .form-input::placeholder,
+  input::placeholder,
+  textarea::placeholder {
+    color: rgb(107, 114, 128) !important;
+  }
+  
+  /* Hover states no tema escuro */
+  .bg-gray-100:hover {
+    background-color: rgb(55, 65, 81) !important;
+  }
+  
+  .bg-gray-50:hover {
+    background-color: rgb(55, 65, 81) !important;
+  }
 }
 
 * {

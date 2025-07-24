@@ -1,5 +1,8 @@
 'use client'
 
+// Força renderização dinâmica para evitar problemas de SSG
+export const dynamic = 'force-dynamic'
+
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
@@ -92,15 +95,10 @@ export default function HomePage() {
   // Recarregar dados quando funcionário selecionado mudar ou quando houver trigger
   useEffect(() => {
     if (user) {
-      // Debounce para evitar múltiplas chamadas rápidas
-      const timeoutId = setTimeout(() => {
-        // Usar selectedEmployee se existe, senão usar user
-        const targetUser = selectedEmployee || user
-        console.log('🔄 [Dashboard] Recarregando para:', targetUser.name, 'ID:', targetUser.id)
-        loadDashboardData(targetUser)
-      }, 100)
-      
-      return () => clearTimeout(timeoutId)
+      // Usar selectedEmployee se existe, senão usar user
+      const targetUser = selectedEmployee || user
+      console.log('🔄 [Dashboard] Recarregando para:', targetUser.name, 'ID:', targetUser.id)
+      loadDashboardData(targetUser)
     }
   }, [selectedEmployee, refreshTrigger, user]) // Adicionar user como dependência
 
@@ -433,12 +431,30 @@ export default function HomePage() {
         console.error('Erro inesperado ao calcular tempo de estudo:', error)
       }
 
+      // Buscar total de certificados para admins na visão geral
+      let totalCertificatesForAdmin = 0
+      if (currentUser?.role === 'admin' && !selectedEmployee) {
+        try {
+          const { count: certificatesCount, error: certificatesCountError } = await supabase
+            .from('certificates')
+            .select('*', { count: 'exact', head: true })
+          
+          if (!certificatesCountError) {
+            totalCertificatesForAdmin = certificatesCount || 0
+          }
+        } catch (error) {
+          console.error('Erro ao contar certificados totais:', error)
+        }
+      }
+
       // Calcular estatísticas finais (manter tempo em minutos para melhor formatação)
       const finalStats = {
         totalCourses: courses?.length || 0,
         completedCourses: completedCoursesCount,
         totalWatchTime: totalWatchTimeMinutes, // Manter em minutos
-        certificatesEarned: certificates?.length || 0,
+        certificatesEarned: selectedEmployee ? (certificates?.length || 0) : 
+                           (currentUser?.role === 'admin' && !selectedEmployee) ? totalCertificatesForAdmin : 
+                           (certificates?.length || 0),
         totalUsers: currentUser?.role === 'admin' ? (employees.length || 0) : 0
       }
       
@@ -767,10 +783,10 @@ export default function HomePage() {
             <Star className="h-8 w-8 text-yellow-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">
-                {selectedEmployee ? 'Certificados' : user?.role === 'admin' ? 'Total de Usuários' : 'Certificados'}
+                {selectedEmployee ? 'Certificados' : user?.role === 'admin' && !selectedEmployee ? 'Total de Certificados' : 'Certificados'}
               </p>
               <p className="text-2xl font-bold text-gray-900">
-                {selectedEmployee ? stats.certificatesEarned : user?.role === 'admin' ? stats.totalUsers : stats.certificatesEarned}
+                {stats.certificatesEarned}
               </p>
             </div>
           </div>
@@ -843,6 +859,21 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {recentCourses.map((course) => (
               <div key={course.id} className="card hover:shadow-lg transition-shadow">
+                {/* Imagem de capa do curso */}
+                {course.image_url && (
+                  <div className="mb-4">
+                    <img 
+                      src={course.image_url} 
+                      alt={course.title}
+                      className="w-full h-32 object-cover rounded-lg"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <h4 className="font-semibold text-gray-900 mb-2">{course.title}</h4>
