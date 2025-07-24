@@ -7,12 +7,12 @@ import { supabase } from './supabase'
 import { appCache } from './cache'
 import { coursesCache, videosCache } from './ultra-cache'
 
-// Configurações BALANCEADAS para suportar mais dados
+// Configurações OTIMIZADAS - restaurar retry para melhor confiabilidade
 const RETRY_CONFIG = {
-  maxRetries: 1, // APENAS 1 tentativa
-  baseDelay: 0, // SEM delay
-  maxDelay: 0,
-  timeoutMs: 5000 // 5 segundos timeout para suportar mais dados
+  maxRetries: 2, // Voltar para 2 tentativas
+  baseDelay: 500, // 500ms delay base
+  maxDelay: 2000, // 2s delay máximo
+  timeoutMs: 8000 // Aumentar timeout para 8 segundos
 }
 
 // Função para delay com backoff exponencial
@@ -40,36 +40,61 @@ export const emergencyQuery = async <T>(
     }
   }
 
-  // APENAS 1 TENTATIVA - SEM RETRY
-  try {
-    console.log(`⚡ TENTATIVA ÚNICA - Timeout: ${RETRY_CONFIG.timeoutMs}ms`)
-    
-    // Criar promise com timeout AGRESSIVO
-    const queryPromise = queryFn()
-    const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) => {
-      setTimeout(() => reject(new Error('Query timeout')), RETRY_CONFIG.timeoutMs)
-    })
-    
-    const result = await Promise.race([queryPromise, timeoutPromise])
-    
-    if (result.error) {
-      console.error(`❌ Erro na query:`, result.error.message || result.error)
-      return { data: null, error: result.error }
+  // Sistema de retry com múltiplas tentativas
+  for (let attempt = 1; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+    try {
+      console.log(`⚡ TENTATIVA ${attempt}/${RETRY_CONFIG.maxRetries} - Timeout: ${RETRY_CONFIG.timeoutMs}ms`)
+      
+      // Criar promise com timeout
+      const queryPromise = queryFn()
+      const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) => {
+        setTimeout(() => reject(new Error('Query timeout')), RETRY_CONFIG.timeoutMs)
+      })
+
+      const result = await Promise.race([queryPromise, timeoutPromise])
+      
+      if (result.error) {
+        console.error(`❌ Tentativa ${attempt} - Erro na query:`, result.error.message || result.error)
+        
+        // Se não é a última tentativa, esperar antes de tentar novamente
+        if (attempt < RETRY_CONFIG.maxRetries) {
+          const delayTime = calculateDelay(attempt)
+          console.log(`⏳ Aguardando ${delayTime}ms antes da próxima tentativa...`)
+          await delay(delayTime)
+          continue
+        }
+        
+        return { data: null, error: result.error }
+      }
+
+      // Sucesso - salvar no cache IMEDIATAMENTE
+      if (cacheKey && result.data) {
+        appCache.set(cacheKey, result.data, cacheTTL || 30 * 60 * 1000) // 30 min default
+        console.log(`💾 CACHE SAVED: ${cacheKey}`)
+      }
+      
+      console.log(`✅ SUCCESS em tentativa ${attempt}`)
+      return result
+      
+    } catch (error) {
+      console.error(`❌ Tentativa ${attempt} falhou:`, (error as Error).message || error)
+      
+      // Se não é a última tentativa, esperar antes de tentar novamente
+      if (attempt < RETRY_CONFIG.maxRetries) {
+        const delayTime = calculateDelay(attempt)
+        console.log(`⏳ Aguardando ${delayTime}ms antes da próxima tentativa...`)
+        await delay(delayTime)
+        continue
+      }
+      
+      // Última tentativa falhou
+      console.error(`💥 FALHA TOTAL após ${RETRY_CONFIG.maxRetries} tentativas:`, (error as Error).message || error)
+      return { data: null, error: error }
     }
-    
-    // Sucesso - salvar no cache IMEDIATAMENTE
-    if (cacheKey && result.data) {
-      appCache.set(cacheKey, result.data, cacheTTL || 30 * 60 * 1000) // 30 min default
-      console.log(`💾 CACHE SAVED: ${cacheKey}`)
-    }
-    
-    console.log(`✅ SUCCESS em ${RETRY_CONFIG.timeoutMs}ms`)
-    return result
-    
-  } catch (error) {
-    console.error(`💥 FALHA TOTAL:`, (error as Error).message || error)
-    return { data: null, error: error }
   }
+
+  // Não deveria chegar aqui, mas por segurança
+  return { data: null, error: new Error('Número máximo de tentativas excedido') }
 }
 
 // Funções específicas para queries comuns
