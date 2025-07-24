@@ -7,12 +7,12 @@ import { supabase } from './supabase'
 import { appCache } from './cache'
 import { coursesCache, videosCache } from './ultra-cache'
 
-// Configurações OTIMIZADAS - restaurar retry para melhor confiabilidade
+// Configurações OTIMIZADAS para performance - reduzir timeouts
 const RETRY_CONFIG = {
-  maxRetries: 2, // Voltar para 2 tentativas
-  baseDelay: 500, // 500ms delay base
-  maxDelay: 2000, // 2s delay máximo
-  timeoutMs: 8000 // Aumentar timeout para 8 segundos
+  maxRetries: 2, // 2 tentativas
+  baseDelay: 300, // 300ms delay base - mais rápido
+  maxDelay: 1000, // 1s delay máximo - mais rápido
+  timeoutMs: 5000 // 5 segundos timeout - mais agressivo
 }
 
 // Função para delay com backoff exponencial
@@ -110,18 +110,18 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
   
   const result = await emergencyQuery(
     async () => {
-      // Query COMPLETA - incluindo apenas thumbnail (image_url não existe)
+      // Query OTIMIZADA - campos essenciais para performance (sem updated_at)
       if (isAdmin) {
         return await supabase
           .from('courses')
-          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at, updated_at')
+          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
           .order('created_at', { ascending: false })
           .limit(100) // AUMENTAR limite para suportar mais cursos
       } else {
-        // Para usuários normais, buscar TODOS os cursos por enquanto (simplificar)
+        // Para usuários normais, buscar TODOS os cursos - campos essenciais
         return await supabase
           .from('courses')
-          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at, updated_at')
+          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
           .order('created_at', { ascending: false })
           .limit(50) // AUMENTAR limite para usuários também
       }

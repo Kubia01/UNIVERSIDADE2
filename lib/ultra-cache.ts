@@ -6,14 +6,14 @@
 // Cache global em memória
 const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>()
 
-// TTLs padrão (em milissegundos)
+// TTLs padrão (em milissegundos) - OTIMIZADO para performance
 const DEFAULT_TTLS = {
-  courses: 2 * 60 * 60 * 1000,    // 2 horas
+  courses: 1 * 60 * 60 * 1000,    // 1 hora - mais agressivo
   videos: 4 * 60 * 60 * 1000,     // 4 horas
-  users: 30 * 60 * 1000,          // 30 minutos
+  users: 45 * 60 * 1000,          // 45 minutos - aumentado para reduzir consultas
   certificates: 60 * 60 * 1000,   // 1 hora
   assignments: 30 * 60 * 1000,    // 30 minutos
-  dashboard: 15 * 60 * 1000       // 15 minutos
+  dashboard: 30 * 60 * 1000       // 30 minutos - aumentado para melhor performance
 }
 
 export const ultraCache = {
