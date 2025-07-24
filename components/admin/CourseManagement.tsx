@@ -140,10 +140,18 @@ const CourseManagement: React.FC = () => {
       // Remover o campo lessons antes de salvar no banco
       const { lessons, ...courseToSave } = courseData;
       
-      // Garantir que a thumbnail seja salva como image_url
+      // Garantir que a thumbnail seja salva como image_url e validar tamanho
       if (courseToSave.thumbnail) {
-        courseToSave.image_url = courseToSave.thumbnail;
-        console.log('🖼️ [CourseManagement] Convertendo thumbnail para image_url')
+        // Verificar se a thumbnail não é muito grande (limite de 50KB para base64)
+        if (courseToSave.thumbnail.length > 50000) {
+          console.log('⚠️ [CourseManagement] Thumbnail muito grande, removendo para evitar erro 400')
+          console.log('⚠️ [CourseManagement] Tamanho:', courseToSave.thumbnail.length, 'bytes')
+          delete courseToSave.thumbnail
+          delete courseToSave.image_url
+        } else {
+          courseToSave.image_url = courseToSave.thumbnail;
+          console.log('🖼️ [CourseManagement] Convertendo thumbnail para image_url')
+        }
       }
       
       console.log('🔍 [CourseManagement] Salvando curso:', courseToSave)
@@ -159,12 +167,26 @@ const CourseManagement: React.FC = () => {
       
       if (editingCourse) {
         // Atualizar curso existente
+        console.log('💾 [CourseManagement] Enviando UPDATE para Supabase...')
+        console.log('💾 [CourseManagement] Dados a serem enviados:', {
+          ...courseToSave,
+          thumbnail: courseToSave.thumbnail ? `[${courseToSave.thumbnail.length} chars]` : 'undefined',
+          image_url: courseToSave.image_url ? `[${courseToSave.image_url.length} chars]` : 'undefined'
+        })
+        
         const { error } = await supabase
           .from('courses')
           .update(courseToSave)
           .eq('id', editingCourse.id)
 
-        if (error) throw error
+        if (error) {
+          console.error('❌ [CourseManagement] Erro detalhado do Supabase:', error)
+          console.error('❌ [CourseManagement] Código:', error.code)
+          console.error('❌ [CourseManagement] Mensagem:', error.message)
+          console.error('❌ [CourseManagement] Detalhes:', error.details)
+          console.error('❌ [CourseManagement] Hint:', error.hint)
+          throw error
+        }
         
         // Atualizar as aulas (videos)
         if (lessons && editingCourse.id) {

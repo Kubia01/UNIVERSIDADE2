@@ -148,22 +148,72 @@ const CourseCreation: React.FC<CourseCreationProps> = ({ course, onBack, onSave 
       console.log('🖼️ [CourseCreation] FileReader onload executado, result length:', result?.length)
       
       if (result) {
-        console.log('🖼️ [CourseCreation] Atualizando courseData com thumbnail')
-        setCourseData(prev => {
-          const updated = { ...prev, thumbnail: result }
-          console.log('🖼️ [CourseCreation] courseData atualizado:', { 
-            ...updated, 
-            thumbnail: `${result.substring(0, 50)}...` 
+        // Se a imagem for muito grande, comprimir
+        if (result.length > 50000) {
+          console.log('⚠️ [CourseCreation] Imagem muito grande, comprimindo...')
+          
+          const img = new Image()
+          img.onload = () => {
+            const canvas = document.createElement('canvas')
+            const ctx = canvas.getContext('2d')
+            
+            // Reduzir tamanho para máximo 400x300
+            const maxWidth = 400
+            const maxHeight = 300
+            let { width, height } = img
+            
+            if (width > height) {
+              if (width > maxWidth) {
+                height = (height * maxWidth) / width
+                width = maxWidth
+              }
+            } else {
+              if (height > maxHeight) {
+                width = (width * maxHeight) / height
+                height = maxHeight
+              }
+            }
+            
+            canvas.width = width
+            canvas.height = height
+            ctx?.drawImage(img, 0, 0, width, height)
+            
+            // Converter com qualidade reduzida
+            const compressedResult = canvas.toDataURL('image/jpeg', 0.6)
+            console.log('✅ [CourseCreation] Imagem comprimida de', result.length, 'para', compressedResult.length, 'chars')
+            
+            console.log('🖼️ [CourseCreation] Atualizando courseData com thumbnail comprimida')
+            setCourseData(prev => {
+              const updated = { ...prev, thumbnail: compressedResult }
+              console.log('🖼️ [CourseCreation] courseData atualizado:', { 
+                ...updated, 
+                thumbnail: `${compressedResult.substring(0, 50)}...` 
+              })
+              return updated
+            })
+            
+            console.log('✅ [CourseCreation] Thumbnail comprimida carregada com sucesso!')
+            setTimeout(() => {
+              alert('✅ Imagem comprimida e carregada com sucesso!')
+            }, 100)
+          }
+          img.src = result
+        } else {
+          console.log('🖼️ [CourseCreation] Atualizando courseData com thumbnail')
+          setCourseData(prev => {
+            const updated = { ...prev, thumbnail: result }
+            console.log('🖼️ [CourseCreation] courseData atualizado:', { 
+              ...updated, 
+              thumbnail: `${result.substring(0, 50)}...` 
+            })
+            return updated
           })
-          return updated
-        })
-        
-        console.log('✅ [CourseCreation] Thumbnail carregada com sucesso!')
-        
-        // Mostrar notificação de sucesso
-        setTimeout(() => {
-          alert('✅ Imagem carregada com sucesso!')
-        }, 100)
+          
+          console.log('✅ [CourseCreation] Thumbnail carregada com sucesso!')
+          setTimeout(() => {
+            alert('✅ Imagem carregada com sucesso!')
+          }, 100)
+        }
       } else {
         console.error('🖼️ [CourseCreation] Result vazio do FileReader')
       }
