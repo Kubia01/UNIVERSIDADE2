@@ -466,19 +466,46 @@ Ou consulte o arquivo create-storage-bucket.md para instruções detalhadas.`)
 
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Thumbnail do Curso
+            Imagem de Capa do Módulo
           </label>
-          <div className="flex items-center space-x-4">
-            {courseData.thumbnail && (
-              <img
-                src={courseData.thumbnail}
-                alt="Thumbnail"
-                className="w-20 h-20 object-cover rounded-lg"
-              />
+          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6">
+            {courseData.thumbnail ? (
+              <div className="flex items-center space-x-4">
+                <img
+                  src={courseData.thumbnail}
+                  alt="Capa do módulo"
+                  className="w-24 h-24 object-cover rounded-lg shadow-md"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                    ✅ Imagem carregada com sucesso!
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Clique no botão abaixo para alterar a imagem
+                  </p>
+                  <button
+                    onClick={() => setCourseData({ ...courseData, thumbnail: '' })}
+                    className="mt-2 text-xs text-red-600 hover:text-red-800 underline"
+                  >
+                    Remover imagem
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center">
+                <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Adicione uma imagem de capa para o módulo
+                </p>
+                <p className="text-xs text-gray-500 mb-4">
+                  Formatos aceitos: JPEG, PNG, GIF, WebP (máx. 5MB)
+                </p>
+              </div>
             )}
-            <label className="flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg cursor-pointer transition-colors">
+            
+            <label className="flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg cursor-pointer transition-colors mt-4">
               <Upload className="h-4 w-4 mr-2" />
-              Enviar Imagem
+              {courseData.thumbnail ? 'Alterar Imagem' : 'Selecionar Imagem'}
               <input
                 type="file"
                 accept="image/*"
