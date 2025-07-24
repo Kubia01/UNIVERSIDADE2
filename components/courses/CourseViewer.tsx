@@ -225,6 +225,12 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
 
   // Memoizar filtros para evitar recálculos desnecessários
   const filteredCourses = useMemo(() => {
+    // Se ainda está carregando ou não há cursos, retornar array vazio
+    if (loading || courses.length === 0) {
+      console.log(`[CourseViewer] 🔍 Filtro pausado - loading: ${loading}, courses: ${courses.length}`)
+      return []
+    }
+    
     const filtered = courses.filter(course => {
       const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            course.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -259,7 +265,7 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
     }
     
     return filtered
-  }, [courses, searchTerm, selectedDepartment, selectedType, user?.department])
+  }, [courses, searchTerm, selectedDepartment, selectedType, user?.department, loading])
 
   // Debug function para testar no console do browser
   React.useEffect(() => {
@@ -423,7 +429,8 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
         console.log('  - filteredCourses:', filteredCourses.map(c => ({ id: c.id, title: c.title })))
         return null
       })()}
-      {!connectionError && filteredCourses.length > 0 ? (
+      {!connectionError && courses.length > 0 ? (
+        filteredCourses.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((course) => {
             console.log('[CourseViewer] Renderizando card do módulo:', course)
@@ -568,22 +575,41 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
             )
           })}
         </div>
+        ) : (
+          <div className="text-center py-16">
+            <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+              {searchTerm || selectedDepartment !== 'All' || selectedType !== 'All'
+                ? 'Nenhum módulo encontrado'
+                : 'Nenhum módulo encontrado com os filtros atuais'}
+            </h3>
+            <p className="text-gray-500 dark:text-gray-400">
+              Tente ajustar os filtros ou aguarde o carregamento dos módulos.
+            </p>
+            <button
+              onClick={() => {
+                setSearchTerm('')
+                setSelectedDepartment('All')
+                setSelectedType('All')
+              }}
+              className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
+              Limpar Filtros
+            </button>
+          </div>
+        )
       ) : (
         <div className="text-center py-16">
           <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            {searchTerm || selectedDepartment !== 'All' || selectedType !== 'All'
-              ? 'Nenhum módulo encontrado'
-              : user.role === 'admin' 
-                ? 'Nenhum módulo disponível'
-                : 'Nenhum curso atribuído'}
+            {user.role === 'admin' 
+              ? 'Nenhum módulo criado ainda'
+              : 'Nenhum curso atribuído'}
           </h3>
           <p className="text-gray-500 dark:text-gray-400">
-            {searchTerm || selectedDepartment !== 'All' || selectedType !== 'All'
-              ? 'Tente ajustar os filtros para encontrar módulos.'
-              : user.role === 'admin'
-                ? 'Novos módulos de treinamento serão adicionados em breve!'
-                : 'Entre em contato com o administrador para solicitar acesso aos cursos de treinamento.'}
+            {user.role === 'admin'
+              ? 'Crie novos módulos na aba "Gerenciar Cursos".'
+              : 'Entre em contato com o administrador para solicitar acesso aos cursos de treinamento.'}
           </p>
           {user.role !== 'admin' && (
             <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg max-w-md mx-auto">
