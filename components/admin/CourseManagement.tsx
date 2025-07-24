@@ -140,8 +140,12 @@ const CourseManagement: React.FC = () => {
       // Remover o campo lessons antes de salvar no banco
       const { lessons, ...courseToSave } = courseData;
       
-      console.log('Salvando curso:', courseToSave)
-      console.log('Aulas para salvar:', lessons)
+      console.log('🔍 [CourseManagement] Salvando curso:', courseToSave)
+      console.log('🖼️ [CourseManagement] Thumbnail no courseToSave:', courseToSave.thumbnail ? 'SIM' : 'NÃO')
+      if (courseToSave.thumbnail) {
+        console.log('🖼️ [CourseManagement] Thumbnail length:', courseToSave.thumbnail.length)
+      }
+      console.log('📚 [CourseManagement] Aulas para salvar:', lessons.length)
       
       if (editingCourse) {
         // Atualizar curso existente
@@ -217,8 +221,22 @@ const CourseManagement: React.FC = () => {
           }
         }
         
-        console.log('Curso e aulas atualizados com sucesso!')
-        alert('Curso atualizado com sucesso!')
+        console.log('✅ [CourseManagement] Curso e aulas atualizados com sucesso!')
+        
+        // Limpar cache para forçar recarregamento
+        console.log('🗑️ [CourseManagement] Limpando cache de cursos...')
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const cacheKeys = Object.keys(localStorage).filter(key => 
+            key.includes('courses-admin-true') || 
+            key.includes('ultra-cache-courses-admin-true')
+          )
+          cacheKeys.forEach(key => {
+            console.log('🗑️ [CourseManagement] Removendo cache:', key)
+            localStorage.removeItem(key)
+          })
+        }
+        
+        alert('✅ Curso atualizado com sucesso!')
         
       } else {
         // Criar novo curso

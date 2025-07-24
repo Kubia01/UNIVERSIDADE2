@@ -121,13 +121,30 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
     try {
       // USAR CHAVE CONSISTENTE - admin usa 'admin', usuários normais usam user.id
       const queryUserId = user.role === 'admin' ? 'admin' : user.id
-      console.log(`[CourseViewer] 🔑 Usando cache key: courses-${queryUserId}-${user.role === 'admin'}`)
-      const result = await emergencyGetCourses(queryUserId, user.role === 'admin')
+      const isAdmin = user.role === 'admin'
+      
+      console.log(`[CourseViewer] 🔑 Usando cache key: courses-${queryUserId}-${isAdmin}`)
+      console.log(`[CourseViewer] 👤 User info:`, { 
+        name: user.name, 
+        role: user.role, 
+        id: user.id,
+        department: user.department 
+      })
+      
+      const result = await emergencyGetCourses(queryUserId, isAdmin)
       
       if (result.error) {
         console.error('[CourseViewer] ❌ Erro após todas as tentativas:', result.error)
         
-        // Verificar se há dados no cache mesmo expirados
+        // Para usuários não-admin, se der erro, pode ser normal (sem cursos atribuídos)
+        if (!isAdmin) {
+          console.log('[CourseViewer] ℹ️ Usuário não-admin sem cursos ou erro de acesso')
+          setCourses([])
+          setLoading(false)
+          return
+        }
+        
+        // Verificar se há dados no cache mesmo expirados (apenas para admins)
         const expiredCache = cacheHelpers.getCourses(queryUserId)
         if (expiredCache) {
           console.log('[CourseViewer] 🔄 Usando cache expirado como fallback')
@@ -136,7 +153,7 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
           return
         }
         
-        // Usar dados de fallback como último recurso
+        // Usar dados de fallback como último recurso (apenas para admins)
         console.log('[CourseViewer] 🚨 Usando dados de fallback')
         const fallbackCourses = useFallbackData('courses') as Course[]
         setCourses(fallbackCourses)
