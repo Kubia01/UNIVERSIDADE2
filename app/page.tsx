@@ -783,20 +783,42 @@ export default function HomePage() {
                   {/* Botão de recarregar */}
                   <button
                     onClick={() => {
-                      console.log('🔄 [Dashboard] Recarregando dados manualmente')
-                      // Limpar cache se necessário
-                      const targetUserId = selectedEmployee?.id || user.id
+                      console.log('🔄 [Dashboard] Recarregamento manual iniciado')
+                      
+                      // Limpar TODOS os caches relevantes
                       if (window.localStorage) {
+                        const targetUserId = selectedEmployee?.id || user.id
                         const cacheKeys = Object.keys(localStorage).filter(key => 
                           key.includes(`dashboard-${targetUserId}`) || 
-                          key.includes('users-cache')
+                          key.includes('users-cache') ||
+                          key.includes('courses-admin-true') ||
+                          key.includes('ultra-cache')
                         )
-                        cacheKeys.forEach(key => localStorage.removeItem(key))
+                        
+                        console.log('🗑️ [Dashboard] Limpando caches:', cacheKeys.length)
+                        cacheKeys.forEach(key => {
+                          console.log('🗑️ [Dashboard] Removendo:', key)
+                          localStorage.removeItem(key)
+                        })
                       }
                       
-                      // Forçar recarregamento
-                      setRefreshTrigger(prev => prev + 1)
+                      // Resetar estados
+                      setSelectedEmployee(null) // Voltar para visão geral
                       setEmployees([]) // Limpar lista para mostrar loading
+                      setStats({
+                        totalCourses: 0,
+                        completedCourses: 0,
+                        totalWatchTime: 0,
+                        certificatesEarned: 0,
+                        totalUsers: 0
+                      })
+                      setRecentCourses([])
+                      setDashboardProgress({})
+                      
+                      // Forçar recarregamento completo
+                      setRefreshTrigger(prev => prev + 1)
+                      
+                      console.log('✅ [Dashboard] Recarregamento completo executado')
                     }}
                     className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
                     title="Recarregar dados do dashboard"
