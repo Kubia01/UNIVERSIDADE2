@@ -47,12 +47,31 @@ const CourseManagement: React.FC = () => {
     loadCourses()
   }, [])
 
-  const loadCourses = async () => {
-    console.log('⚡ [CourseManagement] CARREGAMENTO ULTRA RÁPIDO')
+  const loadCourses = async (forceReload: boolean = false) => {
+    console.log('⚡ [CourseManagement] CARREGAMENTO', forceReload ? 'FORÇADO' : 'ULTRA RÁPIDO')
     try {
-      // Usar sistema de emergência OTIMIZADO
-      console.log('[CourseManagement] 🔑 Usando cache key: courses-admin-true')
-      const result = await emergencyGetCourses('admin', true)
+      let result
+      
+      if (forceReload) {
+        // Recarregamento forçado - buscar direto do banco
+        console.log('[CourseManagement] 🔄 FORÇANDO recarregamento direto do banco...')
+        result = await supabase
+          .from('courses')
+          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, image_url, created_at, updated_at')
+          .order('created_at', { ascending: false })
+          
+        if (result.error) {
+          console.error('❌ Erro no recarregamento forçado:', result.error)
+          // Fallback para o cache em caso de erro
+          result = await emergencyGetCourses('admin', true)
+        } else {
+          console.log('✅ [CourseManagement] Dados recarregados direto do banco:', result.data?.length)
+        }
+      } else {
+        // Usar sistema de emergência OTIMIZADO
+        console.log('[CourseManagement] 🔑 Usando cache key: courses-admin-true')
+        result = await emergencyGetCourses('admin', true)
+      }
       
       if (result.error) {
         console.error('❌ Erro ao carregar cursos:', result.error)
@@ -210,14 +229,24 @@ const CourseManagement: React.FC = () => {
         console.log('💾 [CourseManagement] Enviando UPDATE para Supabase...')
         console.log('💾 [CourseManagement] Dados a serem enviados:', {
           ...courseToSave,
-          thumbnail: courseToSave.thumbnail ? `[${courseToSave.thumbnail.length} chars]` : 'undefined',
+          thumbnail: courseToSave.thumbnail ? `[${courseToSave.thumbnail.length} chars] - ${courseToSave.thumbnail.substring(0, 100)}...` : 'undefined',
           image_url: courseToSave.image_url ? `[${courseToSave.image_url.length} chars]` : 'undefined'
         })
         
-        const { error } = await supabase
+        // Log mais detalhado da thumbnail
+        if (courseToSave.thumbnail) {
+          console.log('🖼️ [CourseManagement] DETALHES DA THUMBNAIL:')
+          console.log('  - Tipo:', typeof courseToSave.thumbnail)
+          console.log('  - Tamanho:', courseToSave.thumbnail.length)
+          console.log('  - Começa com data:', courseToSave.thumbnail.startsWith('data:'))
+          console.log('  - Primeiros 200 chars:', courseToSave.thumbnail.substring(0, 200))
+        }
+        
+        const { data: updateResult, error } = await supabase
           .from('courses')
           .update(courseToSave)
           .eq('id', editingCourse.id)
+          .select('id, title, thumbnail')
 
         if (error) {
           console.error('❌ [CourseManagement] Erro detalhado do Supabase:', error)
@@ -226,6 +255,19 @@ const CourseManagement: React.FC = () => {
           console.error('❌ [CourseManagement] Detalhes:', error.details)
           console.error('❌ [CourseManagement] Hint:', error.hint)
           throw error
+        } else {
+          console.log('✅ [CourseManagement] UPDATE realizado com sucesso!')
+          console.log('📊 [CourseManagement] Resultado do UPDATE:', updateResult)
+          
+          // Verificar se a thumbnail foi salva
+          if (updateResult && updateResult[0]) {
+            const savedCourse = updateResult[0]
+            console.log('🖼️ [CourseManagement] Thumbnail salva no banco?', savedCourse.thumbnail ? 'SIM' : 'NÃO')
+            if (savedCourse.thumbnail) {
+              console.log('🖼️ [CourseManagement] Tamanho da thumbnail salva:', savedCourse.thumbnail.length)
+              console.log('🖼️ [CourseManagement] Primeiros 100 chars:', savedCourse.thumbnail.substring(0, 100))
+            }
+          }
         }
         
         // Atualizar as aulas (videos)
@@ -297,6 +339,8 @@ const CourseManagement: React.FC = () => {
         
         // Limpar cache para forçar recarregamento
         console.log('🗑️ [CourseManagement] Limpando TODOS os caches relacionados...')
+        
+        // 1. Limpar localStorage cache
         if (typeof window !== 'undefined' && window.localStorage) {
           const cacheKeys = Object.keys(localStorage).filter(key => 
             key.includes('courses-admin-true') || 
@@ -304,11 +348,37 @@ const CourseManagement: React.FC = () => {
             key.includes('courses-') ||
             key.includes('ultra-cache')
           )
-          console.log('🗑️ [CourseManagement] Caches encontrados para remoção:', cacheKeys.length)
+          console.log('🗑️ [CourseManagement] Caches localStorage encontrados para remoção:', cacheKeys.length)
           cacheKeys.forEach(key => {
-            console.log('🗑️ [CourseManagement] Removendo cache:', key)
+            console.log('🗑️ [CourseManagement] Removendo cache localStorage:', key)
             localStorage.removeItem(key)
           })
+        }
+        
+        // 2. Limpar ultra-cache em memória (CRÍTICO)
+        try {
+          const { coursesCache, ultraCache } = await import('@/lib/ultra-cache')
+          console.log('🗑️ [CourseManagement] Limpando ultra-cache de cursos...')
+          
+          // Limpar cache específico de admin
+          coursesCache.set('admin', true, null) // Força invalidação
+          
+          // Limpar todas as entradas de courses no ultra-cache
+          const allKeys = [
+            'courses-admin-true',
+            'courses-admin-false', 
+            'courses-user-true',
+            'courses-user-false'
+          ]
+          
+          allKeys.forEach(key => {
+            ultraCache.delete(key)
+            console.log('🗑️ [CourseManagement] Ultra-cache removido:', key)
+          })
+          
+          console.log('✅ [CourseManagement] Ultra-cache limpo com sucesso!')
+        } catch (error) {
+          console.error('❌ [CourseManagement] Erro ao limpar ultra-cache:', error)
         }
         
         alert('✅ Curso atualizado com sucesso!')
@@ -367,6 +437,33 @@ const CourseManagement: React.FC = () => {
         }
         
         console.log('Curso e aulas criados com sucesso!')
+        
+        // Limpar cache também para novos cursos
+        console.log('🗑️ [CourseManagement] Limpando caches após criação...')
+        try {
+          const { coursesCache, ultraCache } = await import('@/lib/ultra-cache')
+          
+          // Limpar cache específico de admin
+          coursesCache.set('admin', true, null) // Força invalidação
+          
+          // Limpar todas as entradas de courses no ultra-cache
+          const allKeys = [
+            'courses-admin-true',
+            'courses-admin-false', 
+            'courses-user-true',
+            'courses-user-false'
+          ]
+          
+          allKeys.forEach(key => {
+            ultraCache.delete(key)
+            console.log('🗑️ [CourseManagement] Ultra-cache removido após criação:', key)
+          })
+          
+          console.log('✅ [CourseManagement] Cache limpo após criação!')
+        } catch (error) {
+          console.error('❌ [CourseManagement] Erro ao limpar cache após criação:', error)
+        }
+        
         alert('Curso criado com sucesso!')
       }
       
@@ -375,7 +472,37 @@ const CourseManagement: React.FC = () => {
       setEditingCourse(null)
       setSelectedCourse(null)
       setSelectedLesson(null)
-      loadCourses()
+      
+      // Aguardar um pouco antes de recarregar para garantir que cache foi limpo
+      setTimeout(async () => {
+        console.log('🔄 [CourseManagement] Recarregando cursos após limpeza de cache...')
+        
+        // Verificação adicional - buscar o curso específico que foi editado
+        if (editingCourse) {
+          console.log('🔍 [CourseManagement] Verificando curso específico:', editingCourse.id)
+          try {
+            const { data: verificarCurso, error: verificarError } = await supabase
+              .from('courses')
+              .select('id, title, thumbnail')
+              .eq('id', editingCourse.id)
+              .single()
+              
+            if (!verificarError && verificarCurso) {
+              console.log('✅ [CourseManagement] Curso verificado:', verificarCurso.title)
+              console.log('🖼️ [CourseManagement] Thumbnail no banco?', verificarCurso.thumbnail ? 'SIM' : 'NÃO')
+              if (verificarCurso.thumbnail) {
+                console.log('🖼️ [CourseManagement] Tamanho:', verificarCurso.thumbnail.length)
+              }
+            } else {
+              console.error('❌ [CourseManagement] Erro ao verificar curso:', verificarError)
+            }
+          } catch (error) {
+            console.error('❌ [CourseManagement] Erro na verificação:', error)
+          }
+        }
+        
+        loadCourses(true) // FORÇAR recarregamento direto do banco
+      }, 500)
       
     } catch (error: any) {
       console.error('Erro ao salvar curso:', error)
