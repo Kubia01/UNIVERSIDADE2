@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import '../styles/browser-compatibility-lite.css'
 import AdaptiveColorsProvider from '@/components/providers/AdaptiveColorsProvider'
+import OfflineNotification from '@/components/ui/OfflineNotification'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -28,6 +29,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={inter.className}>
         <AdaptiveColorsProvider>
+          <OfflineNotification />
           <div className="min-h-screen adaptive-bg">
             {children}
           </div>

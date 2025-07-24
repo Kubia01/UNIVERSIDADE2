@@ -6,13 +6,20 @@
 import { supabase } from './supabase'
 import { appCache } from './cache'
 import { coursesCache, videosCache } from './ultra-cache'
+import { 
+  isOfflineMode, 
+  enableOfflineMode, 
+  disableOfflineMode, 
+  shouldRetryConnection,
+  getFallbackData 
+} from './fallback-data'
 
-// Configurações OTIMIZADAS para performance - reduzir timeouts
+// Configurações ULTRA AGRESSIVAS para conectividade ruim
 const RETRY_CONFIG = {
-  maxRetries: 2, // 2 tentativas
-  baseDelay: 300, // 300ms delay base - mais rápido
-  maxDelay: 1000, // 1s delay máximo - mais rápido
-  timeoutMs: 5000 // 5 segundos timeout - mais agressivo
+  maxRetries: 3, // 3 tentativas rápidas
+  baseDelay: 200, // 200ms delay base - muito rápido  
+  maxDelay: 800, // 800ms delay máximo - muito rápido
+  timeoutMs: 3000 // 3 segundos timeout - ultra agressivo
 }
 
 // Função para delay com backoff exponencial
@@ -24,11 +31,12 @@ const calculateDelay = (attempt: number): number => {
   return Math.min(exponentialDelay, RETRY_CONFIG.maxDelay)
 }
 
-// Wrapper para queries com retry e timeout
+// Wrapper para queries com retry e timeout + sistema offline
 export const emergencyQuery = async <T>(
   queryFn: () => Promise<{ data: T | null; error: any }>,
   cacheKey?: string,
-  cacheTTL?: number
+  cacheTTL?: number,
+  fallbackType?: 'courses' | 'users' | 'progress' | 'stats'
 ): Promise<{ data: T | null; error: any }> => {
   
   // SEMPRE verificar cache primeiro - PRIORIDADE MÁXIMA
@@ -37,6 +45,15 @@ export const emergencyQuery = async <T>(
     if (cachedData) {
       console.log(`⚡ CACHE HIT: ${cacheKey}`)
       return { data: cachedData, error: null }
+    }
+  }
+
+  // Se estamos em modo offline E não é uma tentativa de reconexão, usar fallback
+  if (isOfflineMode() && !shouldRetryConnection()) {
+    console.log('🔌 MODO OFFLINE - Usando dados de fallback')
+    if (fallbackType) {
+      const fallbackData = getFallbackData(fallbackType) as T
+      return { data: fallbackData, error: null }
     }
   }
 
@@ -87,8 +104,19 @@ export const emergencyQuery = async <T>(
         continue
       }
       
-      // Última tentativa falhou
+      // Última tentativa falhou - ativar modo offline
       console.error(`💥 FALHA TOTAL após ${RETRY_CONFIG.maxRetries} tentativas:`, (error as Error).message || error)
+      
+      // Ativar modo offline para evitar tentativas futuras desnecessárias
+      enableOfflineMode()
+      
+      // Tentar usar dados de fallback
+      if (fallbackType) {
+        console.log('🔌 Ativando dados de fallback após falha total')
+        const fallbackData = getFallbackData(fallbackType) as T
+        return { data: fallbackData, error: null }
+      }
+      
       return { data: null, error: error }
     }
   }
@@ -127,7 +155,8 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
       }
     },
     cacheKey,
-    60 * 60 * 1000 // 1 HORA de cache
+    60 * 60 * 1000, // 1 HORA de cache
+    'courses' // Usar dados de fallback em caso de falha
   )
   
   // Salvar no ULTRA CACHE também
