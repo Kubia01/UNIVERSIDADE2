@@ -57,7 +57,7 @@ const CourseManagement: React.FC = () => {
         console.log('[CourseManagement] 🔄 FORÇANDO recarregamento direto do banco...')
         result = await supabase
           .from('courses')
-          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, image_url, created_at, updated_at')
+          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at, updated_at')
           .order('created_at', { ascending: false })
           
         if (result.error) {
@@ -229,8 +229,7 @@ const CourseManagement: React.FC = () => {
         console.log('💾 [CourseManagement] Enviando UPDATE para Supabase...')
         console.log('💾 [CourseManagement] Dados a serem enviados:', {
           ...courseToSave,
-          thumbnail: courseToSave.thumbnail ? `[${courseToSave.thumbnail.length} chars] - ${courseToSave.thumbnail.substring(0, 100)}...` : 'undefined',
-          image_url: courseToSave.image_url ? `[${courseToSave.image_url.length} chars]` : 'undefined'
+          thumbnail: courseToSave.thumbnail ? `[${courseToSave.thumbnail.length} chars] - ${courseToSave.thumbnail.substring(0, 100)}...` : 'undefined'
         })
         
         // Log mais detalhado da thumbnail

@@ -955,10 +955,10 @@ export default function HomePage() {
             {recentCourses.map((course) => (
               <div key={course.id} className="card hover:shadow-lg transition-shadow">
                 {/* Imagem de capa do curso */}
-                {course.image_url && (
+                {course.thumbnail && (
                   <div className="mb-4">
                     <img 
-                      src={course.image_url} 
+                      src={course.thumbnail} 
                       alt={course.title}
                       className="w-full h-32 object-cover rounded-lg"
                       onError={(e) => {
