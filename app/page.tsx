@@ -361,7 +361,18 @@ export default function HomePage() {
               }))
               
               console.log('✅ [Dashboard] Usuários carregados da base:', formattedUsers.length)
+              
+              // Garantir que o estado seja atualizado
               setEmployees(formattedUsers)
+              
+              // Verificar se realmente foi atualizado
+              setTimeout(() => {
+                console.log('🔍 [Dashboard] Verificação do estado employees após setEmployees:', employees.length)
+                if (employees.length === 0 && formattedUsers.length > 0) {
+                  console.log('⚠️ [Dashboard] Estado não foi atualizado, forçando novamente')
+                  setEmployees([...formattedUsers])
+                }
+              }, 100)
               
               // Salvar no cache por 30 minutos
               cacheHelpers.setUsers(formattedUsers)
