@@ -753,79 +753,56 @@ export default function HomePage() {
                   console.log('🔍 [Dashboard] Renderizando dropdown. Employees:', employees.length, employees.map(e => ({ id: e.id, name: e.name })))
                   return null
                 })()}
-                <div className="flex space-x-2">
-                  <select
-                    value={selectedEmployee?.id || ''}
-                    onChange={(e) => {
-                      const employeeId = e.target.value
-                      const employee = employees.find(emp => emp.id === employeeId) || null
-                      console.log('👤 [Dashboard] Usuário selecionado:', employee?.name || 'Todos')
-                      setSelectedEmployee(employee)
-                    }}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={employees.length === 0}
-                  >
-                    <option value="">
-                      {employees.length === 0 ? 'Carregando usuários...' : 'Visão Geral (Todos)'}
-                    </option>
-                    {employees.map((employee) => (
-                      <option key={employee.id} value={employee.id}>
-                        {employee.name} - {employee.department}
-                      </option>
-                    ))}
-                    {employees.length === 0 && (
-                      <option value="" disabled>
-                        Nenhum usuário encontrado
-                      </option>
-                    )}
-                  </select>
-                  
-                  {/* Botão de recarregar */}
-                  <button
-                    onClick={() => {
-                      console.log('🔄 [Dashboard] Recarregamento manual iniciado')
-                      
-                      // Limpar TODOS os caches relevantes
-                      if (window.localStorage) {
-                        const targetUserId = selectedEmployee?.id || user.id
-                        const cacheKeys = Object.keys(localStorage).filter(key => 
-                          key.includes(`dashboard-${targetUserId}`) || 
-                          key.includes('users-cache') ||
-                          key.includes('courses-admin-true') ||
-                          key.includes('ultra-cache')
-                        )
-                        
-                        console.log('🗑️ [Dashboard] Limpando caches:', cacheKeys.length)
-                        cacheKeys.forEach(key => {
-                          console.log('🗑️ [Dashboard] Removendo:', key)
-                          localStorage.removeItem(key)
-                        })
-                      }
-                      
-                      // Resetar estados
-                      setSelectedEmployee(null) // Voltar para visão geral
-                      setEmployees([]) // Limpar lista para mostrar loading
-                      setStats({
-                        totalCourses: 0,
-                        completedCourses: 0,
-                        totalWatchTime: 0,
-                        certificatesEarned: 0,
-                        totalUsers: 0
+                <select
+                  value={selectedEmployee?.id || ''}
+                  onChange={(e) => {
+                    const employeeId = e.target.value
+                    const employee = employees.find(emp => emp.id === employeeId) || null
+                    console.log('👤 [Dashboard] Usuário selecionado:', employee?.name || 'Todos')
+                    
+                    // Limpar cache do usuário anterior se necessário
+                    if (selectedEmployee && window.localStorage) {
+                      const oldCacheKeys = Object.keys(localStorage).filter(key => 
+                        key.includes(`dashboard-${selectedEmployee.id}`) ||
+                        key.includes(`courses-${selectedEmployee.id}`)
+                      )
+                      oldCacheKeys.forEach(key => {
+                        console.log('🗑️ [Dashboard] Limpando cache anterior:', key)
+                        localStorage.removeItem(key)
                       })
-                      setRecentCourses([])
-                      setDashboardProgress({})
-                      
-                      // Forçar recarregamento completo
-                      setRefreshTrigger(prev => prev + 1)
-                      
-                      console.log('✅ [Dashboard] Recarregamento completo executado')
-                    }}
-                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-                    title="Recarregar dados do dashboard"
-                  >
-                    🔄
-                  </button>
-                </div>
+                    }
+                    
+                    // Se selecionou um usuário específico, limpar seu cache para forçar atualização
+                    if (employee && window.localStorage) {
+                      const newCacheKeys = Object.keys(localStorage).filter(key => 
+                        key.includes(`dashboard-${employee.id}`) ||
+                        key.includes(`courses-${employee.id}`)
+                      )
+                      newCacheKeys.forEach(key => {
+                        console.log('🗑️ [Dashboard] Limpando cache do novo usuário:', key)
+                        localStorage.removeItem(key)
+                      })
+                    }
+                    
+                    setSelectedEmployee(employee)
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  disabled={employees.length === 0}
+                >
+                  <option value="">
+                    {employees.length === 0 ? 'Carregando usuários...' : 'Visão Geral (Todos)'}
+                  </option>
+                  {employees.map((employee) => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name} - {employee.department}
+                    </option>
+                  ))}
+                  {employees.length === 0 && (
+                    <option value="" disabled>
+                      Nenhum usuário encontrado
+                    </option>
+                  )}
+                </select>
                 
                 {employees.length === 0 && user?.role === 'admin' && (
                   <div className="mt-1 text-xs">
@@ -833,7 +810,7 @@ export default function HomePage() {
                       ℹ️ Carregando usuários em segundo plano...
                     </p>
                     <p className="text-gray-500 mt-1">
-                      Se a lista não carregar, clique no botão 🔄 para recarregar.
+                      A lista será carregada automaticamente em alguns segundos.
                     </p>
                   </div>
                 )}

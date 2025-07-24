@@ -140,10 +140,20 @@ const CourseManagement: React.FC = () => {
       // Remover o campo lessons antes de salvar no banco
       const { lessons, ...courseToSave } = courseData;
       
+      // Garantir que a thumbnail seja salva como image_url
+      if (courseToSave.thumbnail) {
+        courseToSave.image_url = courseToSave.thumbnail;
+        console.log('🖼️ [CourseManagement] Convertendo thumbnail para image_url')
+      }
+      
       console.log('🔍 [CourseManagement] Salvando curso:', courseToSave)
       console.log('🖼️ [CourseManagement] Thumbnail no courseToSave:', courseToSave.thumbnail ? 'SIM' : 'NÃO')
+      console.log('🖼️ [CourseManagement] image_url no courseToSave:', courseToSave.image_url ? 'SIM' : 'NÃO')
       if (courseToSave.thumbnail) {
         console.log('🖼️ [CourseManagement] Thumbnail length:', courseToSave.thumbnail.length)
+      }
+      if (courseToSave.image_url) {
+        console.log('🖼️ [CourseManagement] image_url length:', courseToSave.image_url.length)
       }
       console.log('📚 [CourseManagement] Aulas para salvar:', lessons.length)
       
@@ -224,12 +234,15 @@ const CourseManagement: React.FC = () => {
         console.log('✅ [CourseManagement] Curso e aulas atualizados com sucesso!')
         
         // Limpar cache para forçar recarregamento
-        console.log('🗑️ [CourseManagement] Limpando cache de cursos...')
+        console.log('🗑️ [CourseManagement] Limpando TODOS os caches relacionados...')
         if (typeof window !== 'undefined' && window.localStorage) {
           const cacheKeys = Object.keys(localStorage).filter(key => 
             key.includes('courses-admin-true') || 
-            key.includes('ultra-cache-courses-admin-true')
+            key.includes('ultra-cache-courses-admin-true') ||
+            key.includes('courses-') ||
+            key.includes('ultra-cache')
           )
+          console.log('🗑️ [CourseManagement] Caches encontrados para remoção:', cacheKeys.length)
           cacheKeys.forEach(key => {
             console.log('🗑️ [CourseManagement] Removendo cache:', key)
             localStorage.removeItem(key)

@@ -451,6 +451,11 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCourses.map((course) => {
             console.log('[CourseViewer] Renderizando card do módulo:', course)
+            console.log('[CourseViewer] 🖼️ Imagem disponível:', {
+              thumbnail: course.thumbnail ? 'SIM (' + course.thumbnail.substring(0, 50) + '...)' : 'NÃO',
+              image_url: course.image_url ? 'SIM (' + course.image_url.substring(0, 50) + '...)' : 'NÃO',
+              title: course.title
+            })
             const lessonCount = courseLessons[course.id]?.length || 0
             return (
               <div key={course.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-lg transition-all duration-300 group">
