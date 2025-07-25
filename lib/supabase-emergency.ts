@@ -6,13 +6,6 @@
 import { supabase } from './supabase'
 import { appCache } from './cache'
 import { coursesCache, videosCache } from './ultra-cache'
-import { 
-  isOfflineMode, 
-  enableOfflineMode, 
-  disableOfflineMode, 
-  shouldRetryConnection,
-  getFallbackData 
-} from './fallback-data'
 
 // Configurações ULTRA AGRESSIVAS para conectividade ruim
 const RETRY_CONFIG = {
