@@ -4,9 +4,7 @@ import React from 'react'
 import { useAdaptiveColorsContext } from '@/components/providers/AdaptiveColorsProvider'
 
 const AdaptiveColorDemo: React.FC = () => {
-  const { browserInfo, colorScheme, isDark, isHighContrast, refreshScheme } = useAdaptiveColorsContext()
-
-  if (!browserInfo) return null
+  const { colorScheme, isDark, isHighContrast, refreshScheme } = useAdaptiveColorsContext()
 
   return (
     <div className="fixed bottom-4 right-4 z-50 max-w-sm">
@@ -17,23 +15,12 @@ const AdaptiveColorDemo: React.FC = () => {
           </h4>
           
           <div className="text-xs space-y-1">
-            <div className="adaptive-text-secondary">
-              <strong>Navegador:</strong> {browserInfo.name} {browserInfo.version}
-            </div>
-            <div className="adaptive-text-secondary">
-              <strong>Sistema:</strong> {browserInfo.os}
-            </div>
             <div className="adaptive-text-muted">
               <strong>Modo:</strong> {isDark ? 'Escuro' : 'Claro'}
             </div>
             {isHighContrast && (
               <div className="adaptive-text-secondary">
                 ⚡ Alto Contraste Ativo
-              </div>
-            )}
-            {browserInfo.isMobile && (
-              <div className="adaptive-text-secondary">
-                📱 Dispositivo Móvel
               </div>
             )}
           </div>

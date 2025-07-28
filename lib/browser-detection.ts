@@ -413,6 +413,7 @@ export const watchColorSchemeChanges = (callback: (scheme: ColorScheme) => void)
 
 // FUNÇÃO DE LOG REMOVIDA - NÃO EXPOR INFORMAÇÕES DO NAVEGADOR
 export const logBrowserInfo = (): void => {
-  // LOGS REMOVIDOS PARA PRIVACIDADE - DETECÇÃO SILENCIOSA
+  // DETECÇÃO SILENCIOSA - LOGS COMPLETAMENTE DESABILITADOS PARA PRIVACIDADE
+  // Sistema funciona internamente mas não expõe dados sensíveis ao usuário
   return
 }
