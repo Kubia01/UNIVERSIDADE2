@@ -93,34 +93,22 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
     // CHAMAR IMEDIATAMENTE - sem timeouts complicados
     console.log('[CourseViewer] 📞 Chamando loadCourses() imediatamente')
     
-    // LIMPEZA AGRESSIVA DE CACHE para usuários não-admin
-    if (renderCount.current === 1 && user.role !== 'admin') {
-      console.log('[CourseViewer] 🧹 Limpeza agressiva de cache para usuário não-admin')
-      // Limpar TODOS os caches relacionados a cursos
+    // LIMPEZA OTIMIZADA - apenas na primeira carga e se necessário
+    if (renderCount.current === 1 && user.role !== 'admin' && courses.length === 0) {
+      console.log('[CourseViewer] 🧹 Limpando cache corrompido (apenas primeira carga sem cursos)')
+      // Limpar apenas caches problemáticos específicos
       if (typeof window !== 'undefined' && window.localStorage) {
-        const oldKeys = Object.keys(localStorage).filter(key => 
-          key.includes('courses-') || 
-          key.includes('ultra-cache-') ||
-          key.includes('emergency-')
-        )
-        oldKeys.forEach(key => {
-          console.log('[CourseViewer] 🗑️ Removendo cache:', key)
-          localStorage.removeItem(key)
+        const problematicKeys = [
+          'courses-users-published',
+          'ultra-cache-courses-users-published',
+          'emergency-courses-users-published'
+        ]
+        problematicKeys.forEach(key => {
+          if (localStorage.getItem(key)) {
+            console.log('[CourseViewer] 🗑️ Removendo cache problemático:', key)
+            localStorage.removeItem(key)
+          }
         })
-      }
-      
-      // Limpar também cache em memória se possível
-      if (typeof window !== 'undefined' && (window as any).ultraCache) {
-        console.log('[CourseViewer] 🗑️ Limpando ultra cache em memória')
-        try {
-          Object.keys((window as any).ultraCache).forEach((key: string) => {
-            if (key.includes('courses') || key.includes(user.id)) {
-              delete (window as any).ultraCache[key]
-            }
-          })
-        } catch (e) {
-          console.log('[CourseViewer] ⚠️ Erro ao limpar ultra cache:', e)
-        }
       }
     }
     
