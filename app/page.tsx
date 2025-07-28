@@ -23,7 +23,7 @@ import CertificateViewer from '@/components/certificates/CertificateViewer'
 import AdminSettings from '@/components/admin/AdminSettings'
 import { PlayCircle, BookOpen, Users, Trophy, Clock, Star } from 'lucide-react'
 import { DashboardSkeleton, FastLoading } from '@/components/ui/SkeletonLoader'
-import AdaptiveColorDemo from '@/components/utils/AdaptiveColorDemo'
+
 import { ConnectionStatus, useConnectionStatus } from '@/components/ui/ConnectionStatus'
 
 // Declaração global para evitar múltiplas execuções
@@ -1138,8 +1138,7 @@ export default function HomePage() {
         </main>
       </div>
       
-      {/* Demo temporário do sistema de cores adaptativas */}
-      <AdaptiveColorDemo />
+
     </div>
   )
 }

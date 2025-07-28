@@ -92,6 +92,24 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
     
     // CHAMAR IMEDIATAMENTE - sem timeouts complicados
     console.log('[CourseViewer] 📞 Chamando loadCourses() imediatamente')
+    
+    // LIMPEZA DE CACHE na primeira carga para garantir dados atualizados
+    if (renderCount.current === 1) {
+      console.log('[CourseViewer] 🧹 Primeira carga - limpando cache antigo')
+      const cacheKey = user.role === 'admin' ? 'courses-admin-true' : `courses-user-${user.id}`
+      // Limpar cache do appCache
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const oldKeys = Object.keys(localStorage).filter(key => 
+          key.includes('courses-users-published') || 
+          key.includes('ultra-cache-courses')
+        )
+        oldKeys.forEach(key => {
+          console.log('[CourseViewer] 🗑️ Removendo cache antigo:', key)
+          localStorage.removeItem(key)
+        })
+      }
+    }
+    
     loadCourses()
   }, [user?.id, courses.length, loading])
 
@@ -131,7 +149,8 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
         department: user.department 
       })
       
-      const result = await emergencyGetCourses(queryUserId, isAdmin)
+      // CORREÇÃO: Passar sempre o user.id real para verificar atribuições corretamente
+      const result = await emergencyGetCourses(user.id, isAdmin)
       
       if (result.error) {
         console.error('[CourseViewer] ❌ Erro após todas as tentativas:', result.error)

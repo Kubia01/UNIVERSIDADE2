@@ -13,10 +13,10 @@ const MAX_CONCURRENT_QUERIES = 3
 
 // Configurações para conectividade - SEM FALLBACK OFFLINE
 const RETRY_CONFIG = {
-  maxRetries: 3, // Reduzir para 3 tentativas para evitar sobrecarga
-  baseDelay: 1000, // 1s delay base - mais conservador
-  maxDelay: 5000, // 5s delay máximo - mais conservador
-  timeoutMs: 15000 // 15 segundos timeout - mais generoso para evitar 500
+  maxRetries: 2, // Reduzir para 2 tentativas para melhor performance
+  baseDelay: 500, // 0.5s delay base - mais rápido
+  maxDelay: 2000, // 2s delay máximo - mais rápido
+  timeoutMs: 8000 // 8 segundos timeout - mais rápido para evitar lentidão
 }
 
 // Função para delay com backoff exponencial
@@ -131,11 +131,11 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
   // VERIFICAR ULTRA CACHE PRIMEIRO
   let cachedCourses = coursesCache.get(userId, isAdmin)
   
-  // OTIMIZAÇÃO EXTRA: Se não é admin e não tem cache específico, tentar cache compartilhado
+  // OTIMIZAÇÃO EXTRA: Se não é admin e não tem cache específico, tentar cache específico do usuário
   if (!cachedCourses && !isAdmin) {
-    cachedCourses = coursesCache.get('users-published', false)
+    cachedCourses = coursesCache.get(`user-${userId}`, false)
     if (cachedCourses) {
-      console.log('⚡ ULTRA CACHE HIT: Cursos compartilhados para usuário não-admin')
+      console.log('⚡ ULTRA CACHE HIT: Cursos específicos do usuário')
       return { data: cachedCourses, error: null }
     }
   }
@@ -145,9 +145,8 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
     return { data: cachedCourses, error: null }
   }
   
-  // OTIMIZAÇÃO: Usar cache compartilhado para usuários não-admin
-  // Todos os usuários não-admin veem os mesmos cursos publicados
-  const cacheKey = isAdmin ? `courses-admin-true` : `courses-users-published`
+  // OTIMIZAÇÃO: Usar cache específico para cada usuário não-admin para respeitar atribuições
+  const cacheKey = isAdmin ? `courses-admin-true` : `courses-user-${userId}`
   
   const result = await emergencyQuery(
     async () => {
@@ -160,23 +159,61 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
           .order('created_at', { ascending: false })
           .limit(200) // Aumentar limite para admins
       } else {
-        // OTIMIZAÇÃO: Usuários normais compartilham o mesmo cache de cursos publicados
-        return await supabase
-          .from('courses')
-          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
-          .eq('is_published', true) // GARANTIR que apenas cursos publicados sejam visíveis
-          .order('created_at', { ascending: false })
-          .limit(100) // Limite para usuários
+        // CORREÇÃO: Usuários normais só veem cursos atribuídos a eles
+        // Primeiro verificar se existe a tabela course_assignments
+        try {
+          const { data: assignedCourses, error: assignmentError } = await supabase
+            .from('courses')
+            .select(`
+              id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at,
+              course_assignments!inner(user_id)
+            `)
+            .eq('course_assignments.user_id', userId)
+            .eq('is_published', true)
+            .order('created_at', { ascending: false })
+            .limit(100)
+          
+          if (assignmentError) {
+            // Se a tabela course_assignments não existe, mostrar apenas cursos do departamento do usuário
+            console.log('⚠️ Tabela course_assignments não encontrada, usando filtro por departamento')
+            
+            // Buscar o departamento do usuário
+            const { data: userProfile } = await supabase
+              .from('profiles')
+              .select('department')
+              .eq('id', userId)
+              .single()
+            
+            if (userProfile?.department) {
+              return await supabase
+                .from('courses')
+                .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
+                .eq('is_published', true)
+                .eq('department', userProfile.department)
+                .order('created_at', { ascending: false })
+                .limit(100)
+            } else {
+              // Se não conseguir determinar o departamento, não mostrar cursos
+              return { data: [], error: null }
+            }
+          }
+          
+          return { data: assignedCourses, error: null }
+        } catch (error) {
+          console.error('Erro ao verificar atribuições:', error)
+          // Fallback: não mostrar cursos se houver erro
+          return { data: [], error: null }
+        }
       }
     },
     cacheKey,
-    4 * 60 * 60 * 1000 // 4 HORAS de cache - cache mais longo para melhor performance
+    2 * 60 * 60 * 1000 // 2 HORAS de cache - cache específico por usuário
   )
   
-  // Salvar no ULTRA CACHE também - usar cache key otimizado
+  // Salvar no ULTRA CACHE também - usar cache key específico do usuário
   if (result.data && !result.error) {
-    // Para usuários não-admin, salvar com a key compartilhada
-    const optimizedUserId = isAdmin ? userId : 'users-published'
+    // Para usuários não-admin, salvar com a key específica do usuário
+    const optimizedUserId = isAdmin ? userId : `user-${userId}`
     coursesCache.set(optimizedUserId, isAdmin, result.data)
     console.log(`✅ Cursos carregados: ${result.data.length} encontrados (cache: ${cacheKey})`)
   }
