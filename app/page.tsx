@@ -30,6 +30,7 @@ import { ConnectionStatus, useConnectionStatus } from '@/components/ui/Connectio
 declare global {
   interface Window {
     __userLoadInProgress?: boolean
+    __employeeChangeTimeout?: NodeJS.Timeout
   }
 }
 
@@ -293,11 +294,57 @@ export default function HomePage() {
         return
       }
       
-      // Se não há employees no cache mas é admin, continuar para carregar employees
-      if (currentUser?.role === 'admin') {
-        console.log('📊 [Dashboard] Cache sem employees, continuando para carregar usuários')
-        // Continuar execução para carregar employees
-      } else {
+              // Se não há employees no cache mas é admin, continuar para carregar employees
+        if (currentUser?.role === 'admin') {
+          console.log('📊 [Dashboard] Cache sem employees, continuando para carregar usuários')
+          
+          // Adicionar timeout para evitar travamento
+          const employeeLoadTimeout = setTimeout(() => {
+            console.warn('⚠️ [Dashboard] Timeout no carregamento de employees - usando lista vazia')
+            setEmployees([])
+          }, 5000) // 5 segundos de timeout
+          
+          try {
+            // Continuar execução para carregar employees
+            const { data: users, error: realError } = await supabase
+              .from('profiles')
+              .select('*')
+              .order('name')
+            
+            clearTimeout(employeeLoadTimeout)
+            
+            if (!realError && users) {
+              const formattedUsers = users.map(u => ({
+                id: u.id,
+                name: u.name || 'Usuário sem nome',
+                email: u.email,
+                department: (u.department as Department) || 'HR',
+                role: (u.role as 'admin' | 'user') || 'user',
+                avatar: u.avatar || '',
+                created_at: u.created_at || new Date().toISOString(),
+                updated_at: u.updated_at || new Date().toISOString(),
+              }))
+              
+              console.log('✅ [Dashboard] Usuários carregados da base:', formattedUsers.length)
+              
+              // Usar callback para garantir atualização
+              setEmployees(prev => {
+                console.log('🔄 [Dashboard] Atualizando employees de', prev.length, 'para', formattedUsers.length)
+                return formattedUsers
+              })
+              
+              // Salvar no cache por 30 minutos
+              cacheHelpers.setUsers(formattedUsers)
+            } else {
+              console.error('❌ [Dashboard] Erro ao carregar usuários:', realError)
+              setEmployees([])
+            }
+          } catch (error) {
+            clearTimeout(employeeLoadTimeout)
+            console.error('❌ [Dashboard] Erro no carregamento de usuários:', error)
+            setEmployees([])
+          }
+        } else {
         // Se não é admin, pode retornar
         return
       }
@@ -356,11 +403,19 @@ export default function HomePage() {
         } else {
           console.log('📡 [Dashboard] Cache miss - carregando usuários da base')
           
+          // Adicionar timeout para evitar travamento
+          const employeeLoadTimeout = setTimeout(() => {
+            console.warn('⚠️ [Dashboard] Timeout no carregamento de employees - usando lista vazia')
+            setEmployees([])
+          }, 5000) // 5 segundos de timeout
+          
           try {
             const { data: realUsers, error: realError } = await supabase
               .from('profiles')
               .select('id, name, email, department, role, avatar, created_at, updated_at')
               .order('name', { ascending: true })
+
+            clearTimeout(employeeLoadTimeout)
 
             if (!realError && realUsers && realUsers.length > 0) {
               const formattedUsers: User[] = realUsers.map((u: any) => ({
@@ -386,17 +441,12 @@ export default function HomePage() {
               cacheHelpers.setUsers(formattedUsers)
             } else {
               console.error('❌ [Dashboard] Erro ao carregar usuários:', realError)
-              // CORREÇÃO: Não limpar employees se houve erro, manter lista existente
-              if (employees.length === 0) {
-                setEmployees([])
-              }
-            }
-          } catch (error) {
-            console.error('❌ [Dashboard] Erro no carregamento de usuários:', error)
-            // CORREÇÃO: Não limpar employees se houve erro, manter lista existente
-            if (employees.length === 0) {
               setEmployees([])
             }
+          } catch (error) {
+            clearTimeout(employeeLoadTimeout)
+            console.error('❌ [Dashboard] Erro no carregamento de usuários:', error)
+            setEmployees([])
           }
         }
       } else {
@@ -800,28 +850,32 @@ export default function HomePage() {
                     const employee = employees.find(emp => emp.id === employeeId) || null
                     console.log('👤 [Dashboard] Usuário selecionado:', employee?.name || 'Todos')
                     
-                    // Limpar cache do usuário anterior se necessário para forçar atualização
-                    if (selectedEmployee && window.localStorage) {
-                      const oldCacheKeys = Object.keys(localStorage).filter(key => 
-                        key.includes(`dashboard-${selectedEmployee.id}`) ||
-                        key.includes(`courses-${selectedEmployee.id}`)
-                      )
-                      oldCacheKeys.forEach(key => {
-                        console.log('🗑️ [Dashboard] Limpando cache anterior:', key)
-                        localStorage.removeItem(key)
-                      })
+                    // Debounce para evitar múltiplas chamadas rápidas
+                    if (window.__employeeChangeTimeout) {
+                      clearTimeout(window.__employeeChangeTimeout)
                     }
                     
-                    // CORREÇÃO: Não limpar cache do novo usuário para melhor performance
-                    // O cache será atualizado naturalmente quando necessário
-                    
-                    setSelectedEmployee(employee)
+                    window.__employeeChangeTimeout = setTimeout(() => {
+                      // Limpar cache do usuário anterior se necessário para forçar atualização
+                      if (selectedEmployee && window.localStorage) {
+                        const oldCacheKeys = Object.keys(localStorage).filter(key => 
+                          key.includes(`dashboard-${selectedEmployee.id}`) ||
+                          key.includes(`courses-${selectedEmployee.id}`)
+                        )
+                        oldCacheKeys.forEach(key => {
+                          console.log('🗑️ [Dashboard] Limpando cache anterior:', key)
+                          localStorage.removeItem(key)
+                        })
+                      }
+                      
+                      setSelectedEmployee(employee)
+                    }, 300) // 300ms de debounce
                   }}
                   className="adaptive-input w-full px-3 py-2 border rounded-lg focus:ring-2 transition-colors"
                   disabled={employees.length === 0}
                 >
                   <option value="">
-                    {employees.length === 0 ? 'Carregando usuários...' : 'Visão Geral (Todos)'}
+                    {employees.length === 0 ? '⏳ Carregando usuários...' : 'Visão Geral (Todos)'}
                   </option>
                   {employees.map((employee) => (
                     <option key={employee.id} value={employee.id}>
@@ -837,9 +891,12 @@ export default function HomePage() {
                 
                 {employees.length === 0 && user?.role === 'admin' && (
                   <div className="mt-1 text-xs">
-                    <p className="text-blue-600">
-                      ℹ️ Carregando usuários em segundo plano...
-                    </p>
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600"></div>
+                      <p className="text-blue-600">
+                        Carregando usuários...
+                      </p>
+                    </div>
                     <p className="adaptive-text-muted mt-1">
                       A lista será carregada automaticamente em alguns segundos.
                     </p>
@@ -899,7 +956,12 @@ export default function HomePage() {
             <Clock className="h-8 w-8 text-blue-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Tempo de Estudo</p>
-              <p className="text-2xl font-bold text-gray-900">{formatStudyTime(stats.totalWatchTime)}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {(() => {
+                  console.log('[Dashboard] Tempo de estudo calculado:', stats.totalWatchTime, 'minutos')
+                  return formatStudyTime(stats.totalWatchTime)
+                })()}
+              </p>
             </div>
           </div>
         </div>

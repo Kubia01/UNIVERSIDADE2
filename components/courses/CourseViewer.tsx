@@ -521,7 +521,16 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
                         </span>
                         <div className="flex items-center text-sm">
                           <Clock className="h-4 w-4 mr-1" />
-                          {Math.floor(course.duration / 60)}h {course.duration % 60}min
+                          {(() => {
+                            console.log('[CourseViewer] Duração do curso:', course.title, 'duration:', course.duration)
+                            if (course.duration && course.duration > 0) {
+                              const hours = Math.floor(course.duration / 60)
+                              const minutes = course.duration % 60
+                              return `${hours}h ${minutes}min`
+                            } else {
+                              return 'Duração não definida'
+                            }
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -706,7 +715,22 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Tempo de Estudo</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">0h</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                {(() => {
+                  // Calcular tempo total de estudo baseado nos cursos disponíveis
+                  const totalDuration = filteredCourses.reduce((total, course) => {
+                    return total + (course.duration || 0)
+                  }, 0)
+                  
+                  if (totalDuration > 0) {
+                    const hours = Math.floor(totalDuration / 60)
+                    const minutes = totalDuration % 60
+                    return hours > 0 ? `${hours}h ${minutes}min` : `${minutes}min`
+                  } else {
+                    return '0h'
+                  }
+                })()}
+              </p>
             </div>
           </div>
         </div>
