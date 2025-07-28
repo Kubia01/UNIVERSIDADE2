@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { supabase, User, Course, Lesson, Department } from '@/lib/supabase'
 import { cacheHelpers } from '@/lib/cache'
-import { emergencyGetVideos, emergencyGetCourses, prewarmNonAdminCache } from '@/lib/supabase-emergency'
+import { emergencyGetVideos, emergencyGetCourses } from '@/lib/supabase-emergency'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import UserManagement from '@/components/admin/UserManagement'
@@ -228,14 +228,6 @@ export default function HomePage() {
           // Salvar no cache
           cacheHelpers.setUser(profile.id, profile)
           setUser(profile)
-          
-          // PRÉ-AQUECER cache para usuários não-admin se for admin
-          if (profile.role === 'admin') {
-            console.log('🔥 [Dashboard] Admin logado - pré-aquecendo cache para usuários não-admin')
-            prewarmNonAdminCache().catch(error => {
-              console.error('❌ [Dashboard] Erro ao pré-aquecer cache:', error)
-            })
-          }
         } else {
           console.log('Perfil retornou null')
           router.push('/login')

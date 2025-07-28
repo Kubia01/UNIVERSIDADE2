@@ -7,12 +7,16 @@ import { supabase } from './supabase'
 import { appCache } from './cache'
 import { coursesCache, videosCache } from './ultra-cache'
 
+// Sistema de rate limiting global para evitar sobrecarga
+let activeQueries = 0
+const MAX_CONCURRENT_QUERIES = 3
+
 // Configurações para conectividade - SEM FALLBACK OFFLINE
 const RETRY_CONFIG = {
-  maxRetries: 5, // Aumentar para 5 tentativas
-  baseDelay: 500, // 500ms delay base - mais conservativo
-  maxDelay: 3000, // 3s delay máximo - mais tempo
-  timeoutMs: 10000 // 10 segundos timeout - bem mais generoso
+  maxRetries: 3, // Reduzir para 3 tentativas para evitar sobrecarga
+  baseDelay: 1000, // 1s delay base - mais conservador
+  maxDelay: 5000, // 5s delay máximo - mais conservador
+  timeoutMs: 15000 // 15 segundos timeout - mais generoso para evitar 500
 }
 
 // Função para delay com backoff exponencial
@@ -40,21 +44,63 @@ export const emergencyQuery = async <T>(
     }
   }
 
-  // Sistema de retry com múltiplas tentativas - SEM FALLBACK OFFLINE
-  for (let attempt = 1; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
-    try {
-      console.log(`⚡ TENTATIVA ${attempt}/${RETRY_CONFIG.maxRetries} - Timeout: ${RETRY_CONFIG.timeoutMs}ms`)
-      
-      // Criar promise com timeout
-      const queryPromise = queryFn()
-      const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) => {
-        setTimeout(() => reject(new Error('Query timeout')), RETRY_CONFIG.timeoutMs)
-      })
+  // Rate limiting - aguardar se há muitas queries ativas
+  while (activeQueries >= MAX_CONCURRENT_QUERIES) {
+    console.log(`⏳ Rate limiting: Aguardando ${activeQueries} queries ativas`)
+    await delay(500)
+  }
 
-      const result = await Promise.race([queryPromise, timeoutPromise])
-      
-      if (result.error) {
-        console.error(`❌ Tentativa ${attempt} - Erro na query:`, result.error.message || result.error)
+  activeQueries++
+  console.log(`🚀 Query iniciada (${activeQueries}/${MAX_CONCURRENT_QUERIES} ativas)`)
+
+  try {
+    // Sistema de retry com múltiplas tentativas - SEM FALLBACK OFFLINE
+    for (let attempt = 1; attempt <= RETRY_CONFIG.maxRetries; attempt++) {
+      try {
+        console.log(`⚡ TENTATIVA ${attempt}/${RETRY_CONFIG.maxRetries} - Timeout: ${RETRY_CONFIG.timeoutMs}ms`)
+        
+        // Criar promise com timeout
+        const queryPromise = queryFn()
+        const timeoutPromise = new Promise<{ data: null; error: any }>((_, reject) => {
+          setTimeout(() => reject(new Error('Query timeout')), RETRY_CONFIG.timeoutMs)
+        })
+
+        const result = await Promise.race([queryPromise, timeoutPromise])
+        
+        if (result.error) {
+          console.error(`❌ Tentativa ${attempt} - Erro na query:`, result.error.message || result.error)
+          
+          // Se é erro 500, aguardar mais tempo antes de tentar novamente
+          if (result.error.message?.includes('500') || result.error.code === '500') {
+            console.log(`🛑 Erro 500 detectado - aguardando mais tempo`)
+            if (attempt < RETRY_CONFIG.maxRetries) {
+              await delay(5000) // 5 segundos para erro 500
+              continue
+            }
+          }
+          
+          // Para outros tipos de erro, usar delay normal
+          if (attempt < RETRY_CONFIG.maxRetries) {
+            const delayTime = calculateDelay(attempt)
+            console.log(`⏳ Aguardando ${delayTime}ms antes da próxima tentativa...`)
+            await delay(delayTime)
+            continue
+          }
+          
+          return { data: null, error: result.error }
+        }
+
+        // Sucesso - salvar no cache IMEDIATAMENTE
+        if (cacheKey && result.data) {
+          appCache.set(cacheKey, result.data, cacheTTL || 30 * 60 * 1000) // 30 min default
+          console.log(`💾 CACHE SAVED: ${cacheKey}`)
+        }
+        
+        console.log(`✅ SUCCESS em tentativa ${attempt}`)
+        return result
+        
+      } catch (error) {
+        console.error(`❌ Tentativa ${attempt} falhou:`, (error as Error).message || error)
         
         // Se não é a última tentativa, esperar antes de tentar novamente
         if (attempt < RETRY_CONFIG.maxRetries) {
@@ -64,76 +110,19 @@ export const emergencyQuery = async <T>(
           continue
         }
         
-        return { data: null, error: result.error }
+        // Última tentativa falhou - APENAS REPORTAR ERRO (SEM MODO OFFLINE)
+        console.error(`💥 FALHA TOTAL após ${RETRY_CONFIG.maxRetries} tentativas:`, (error as Error).message || error)
+        console.error('🌐 Sistema funciona apenas online - verifique a conexão')
+        
+        return { data: null, error: error }
       }
-
-      // Sucesso - salvar no cache IMEDIATAMENTE
-      if (cacheKey && result.data) {
-        appCache.set(cacheKey, result.data, cacheTTL || 30 * 60 * 1000) // 30 min default
-        console.log(`💾 CACHE SAVED: ${cacheKey}`)
-      }
-      
-      console.log(`✅ SUCCESS em tentativa ${attempt}`)
-      return result
-      
-    } catch (error) {
-      console.error(`❌ Tentativa ${attempt} falhou:`, (error as Error).message || error)
-      
-      // Se não é a última tentativa, esperar antes de tentar novamente
-      if (attempt < RETRY_CONFIG.maxRetries) {
-        const delayTime = calculateDelay(attempt)
-        console.log(`⏳ Aguardando ${delayTime}ms antes da próxima tentativa...`)
-        await delay(delayTime)
-        continue
-      }
-      
-      // Última tentativa falhou - APENAS REPORTAR ERRO (SEM MODO OFFLINE)
-      console.error(`💥 FALHA TOTAL após ${RETRY_CONFIG.maxRetries} tentativas:`, (error as Error).message || error)
-      console.error('🌐 Sistema funciona apenas online - verifique a conexão')
-      
-      return { data: null, error: error }
     }
-  }
 
-  // Não deveria chegar aqui, mas por segurança
-  return { data: null, error: new Error('Número máximo de tentativas excedido') }
-}
-
-// Função para pré-aquecer cache de usuários não-admin
-export const prewarmNonAdminCache = async () => {
-  console.log('🔥 [Emergency] Pré-aquecendo cache para usuários não-admin...')
-  
-  try {
-    // Verificar se já existe cache
-    const cachedCourses = coursesCache.get('users-published', false)
-    if (cachedCourses) {
-      console.log('⚡ [Emergency] Cache de usuários não-admin já aquecido')
-      return { data: cachedCourses, error: null }
-    }
-    
-    // Carregar cursos publicados uma vez para todos os usuários não-admin
-    const result = await emergencyQuery(
-      async () => {
-        return await supabase
-          .from('courses')
-          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
-          .eq('is_published', true)
-          .order('created_at', { ascending: false })
-          .limit(100)
-      },
-      'courses-users-published',
-      4 * 60 * 60 * 1000 // 4 horas
-    )
-    
-    if (result.data && !result.error) {
-      coursesCache.set('users-published', false, result.data)
-      console.log(`🔥 [Emergency] Cache pré-aquecido: ${result.data.length} cursos publicados`)
-    }
-    
-    return result
-  } catch (error) {
-    console.error('❌ [Emergency] Erro ao pré-aquecer cache:', error)
-    return { data: null, error }
+    // Não deveria chegar aqui, mas por segurança
+    return { data: null, error: new Error('Número máximo de tentativas excedido') }
+  } finally {
+    activeQueries--
+    console.log(`✅ Query finalizada (${activeQueries}/${MAX_CONCURRENT_QUERIES} ativas)`)
   }
 }
 
