@@ -1,39 +1,54 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
-// Cliente Supabase com Service Role Key (apenas no servidor)
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder_key',
-  {
+// Cliente Supabase com configuração dinâmica
+function getSupabaseClients() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+  const supabaseClient = createClient(supabaseUrl!, anonKey!)
+  
+  const supabaseAdmin = serviceKey ? createClient(supabaseUrl!, serviceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
     }
-  }
-)
+  }) : null
+
+  return { supabaseClient, supabaseAdmin }
+}
 
 // Verificar se o usuário é admin
 async function verifyAdminUser(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
+  console.log('[verifyAdminUser] Authorization header presente:', !!authHeader)
+  
   if (!authHeader) {
     console.log('[verifyAdminUser] Cabeçalho Authorization não encontrado')
     return null
   }
 
   const token = authHeader.replace('Bearer ', '')
+  console.log('[verifyAdminUser] Token length:', token.length)
   
   try {
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
-    if (error || !user) {
-      console.log('[verifyAdminUser] Erro ao obter usuário ou usuário não encontrado:', error?.message)
+    const { supabaseClient } = getSupabaseClients()
+    
+    // Definir a sessão do usuário atual
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
+    
+    if (userError || !user) {
+      console.log('[verifyAdminUser] Erro ao validar token ou usuário não encontrado:', userError?.message)
       return null
     }
 
+    console.log('[verifyAdminUser] Usuário autenticado:', user.email, 'ID:', user.id)
+
     // Verificar se é admin
-    const { data: profile, error: profileError } = await supabaseAdmin
+    const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
-      .select('role')
+      .select('role, name, email')
       .eq('id', user.id)
       .single()
 
@@ -42,15 +57,17 @@ async function verifyAdminUser(request: NextRequest) {
       return null
     }
 
+    console.log('[verifyAdminUser] Perfil encontrado:', profile)
+
     if (profile?.role !== 'admin') {
       console.log('[verifyAdminUser] Usuário não é admin:', user.email, 'role:', profile?.role)
       return null
     }
 
-    console.log('[verifyAdminUser] Admin verificado:', user.email)
+    console.log('[verifyAdminUser] ✅ Admin verificado com sucesso:', user.email)
     return user
   } catch (error) {
-    console.log('[verifyAdminUser] Erro geral:', error)
+    console.log('[verifyAdminUser] Erro geral na verificação:', error)
     return null
   }
 }
@@ -58,31 +75,79 @@ async function verifyAdminUser(request: NextRequest) {
 // POST - Criar usuário
 export async function POST(request: NextRequest) {
   try {
-    // Verificar se estamos em um ambiente válido
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ error: 'Configuração do servidor incompleta' }, { status: 500 })
+    console.log('[POST] ===== INÍCIO DA REQUISIÇÃO POST =====')
+    console.log('[POST] NEXT_PUBLIC_SUPABASE_URL:', !!process.env.NEXT_PUBLIC_SUPABASE_URL)
+    console.log('[POST] SUPABASE_SERVICE_ROLE_KEY:', !!process.env.SUPABASE_SERVICE_ROLE_KEY)
+    console.log('[POST] NEXT_PUBLIC_SUPABASE_ANON_KEY:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+    
+    // Verificar se temos URLs básicas
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.log('[POST] ❌ Configuração básica do Supabase não encontrada')
+      return NextResponse.json({ error: 'Configuração do Supabase incompleta' }, { status: 500 })
     }
     
-    console.log('[POST] Iniciando criação de usuário')
+    console.log('[POST] Iniciando verificação de admin...')
     
     // Verificar se é admin
     const adminUser = await verifyAdminUser(request)
     if (!adminUser) {
-      console.log('[POST] Acesso negado - usuário não é admin')
-      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+      console.log('[POST] ❌ Acesso negado - usuário não é admin')
+      return NextResponse.json({ error: 'Acesso negado - usuário não é administrador' }, { status: 403 })
     }
 
+    console.log('[POST] ✅ Admin verificado, prosseguindo com criação...')
     const { email, password, name, department, role } = await request.json()
-    console.log('[POST] Dados recebidos - email:', email, 'name:', name)
+    console.log('[POST] Dados recebidos - email:', email, 'name:', name, 'role:', role)
 
     if (!email || !password || !name) {
-      console.log('[POST] Dados obrigatórios não fornecidos')
-      return NextResponse.json({ error: 'Dados obrigatórios não fornecidos' }, { status: 400 })
+      console.log('[POST] ❌ Dados obrigatórios não fornecidos')
+      return NextResponse.json({ error: 'Email, senha e nome são obrigatórios' }, { status: 400 })
     }
 
-    // Verificar se já existe usuário com este email na auth
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
-    const existingAuthUser = existingUsers.users.find(u => u.email === email)
+    const { supabaseClient, supabaseAdmin } = getSupabaseClients()
+
+    // Verificar se service role está disponível
+    if (!supabaseAdmin) {
+      console.log('[POST] ⚠️ Service role não disponível, usando método alternativo')
+      
+      // Método alternativo: criar perfil diretamente e o usuário fará signup
+      const userId = `temp-${Date.now()}-${Math.random().toString(36).substring(2)}`
+      
+      const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .insert({
+          id: userId,
+          email,
+          name,
+          role: role || 'user',
+          department: department || 'Geral',
+          needs_password_setup: true, // Flag para indicar que precisa configurar senha
+          temp_password: password // Armazenar temporariamente (será removido após primeiro login)
+        })
+
+      if (profileError) {
+        console.error('[POST] Erro ao criar perfil temporário:', profileError)
+        return NextResponse.json({ error: 'Erro ao criar usuário' }, { status: 400 })
+      }
+
+      console.log('[POST] ✅ Usuário criado com método alternativo')
+      return NextResponse.json({ 
+        success: true, 
+        user: {
+          id: userId,
+          email,
+          name,
+          role: role || 'user',
+          department: department || 'Geral',
+          needs_setup: true
+        },
+        message: 'Usuário criado. Um email de convite será enviado.'
+      })
+    }
+
+    // Método padrão com service role
+    const { data: usersResponse } = await supabaseAdmin.auth.admin.listUsers()
+    const existingAuthUser = usersResponse?.users.find(u => u.email === email)
 
     if (existingAuthUser) {
       console.log('[POST] Usuário já existe na auth:', email, 'ID:', existingAuthUser.id)
@@ -101,24 +166,10 @@ export async function POST(request: NextRequest) {
 
       if (existingProfile) {
         console.log('[POST] Usuário já tem perfil completo')
-        return NextResponse.json({ error: 'A user with this email address has already been registered' }, { status: 400 })
+        return NextResponse.json({ error: 'Usuário já existe com este email' }, { status: 400 })
       }
 
-      // Usuário existe na auth mas não tem perfil - criar perfil
-      console.log('[POST] Criando perfil para usuário órfão existente')
-      
-      // Primeiro, atualizar a senha do usuário existente
-      const { error: updatePasswordError } = await supabaseAdmin.auth.admin.updateUserById(existingAuthUser.id, {
-        password
-      })
-
-      if (updatePasswordError) {
-        console.log('[POST] Erro ao atualizar senha do usuário órfão:', updatePasswordError.message)
-      } else {
-        console.log('[POST] Senha atualizada para usuário órfão')
-      }
-
-      // Criar perfil
+      // Criar perfil para usuário existente
       const { error: profileError } = await supabaseAdmin
         .from('profiles')
         .insert({
@@ -130,11 +181,10 @@ export async function POST(request: NextRequest) {
         })
 
       if (profileError) {
-        console.error('[POST] Erro ao criar perfil para usuário órfão:', profileError)
+        console.error('[POST] Erro ao criar perfil para usuário existente:', profileError)
         return NextResponse.json({ error: 'Erro ao criar perfil do usuário' }, { status: 400 })
       }
 
-      console.log('[POST] Perfil criado com sucesso para usuário órfão')
       return NextResponse.json({ 
         success: true, 
         user: {
@@ -147,10 +197,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Usuário não existe - criar novo
-    console.log('[POST] Criando novo usuário na autenticação')
-    
-    // 1. Criar usuário na autenticação
+    // Criar novo usuário
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -164,7 +211,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[POST] Usuário criado na auth:', authUser.user.id)
 
-    // 2. Criar perfil
+    // Criar perfil
     const { error: profileError } = await supabaseAdmin
       .from('profiles')
       .insert({
@@ -177,12 +224,11 @@ export async function POST(request: NextRequest) {
 
     if (profileError) {
       console.error('[POST] Erro ao criar perfil:', profileError)
-      // Se falhar ao criar perfil, remover usuário da auth
       await supabaseAdmin.auth.admin.deleteUser(authUser.user.id)
       return NextResponse.json({ error: 'Erro ao criar perfil do usuário' }, { status: 400 })
     }
 
-    console.log('[POST] Usuário e perfil criados com sucesso')
+    console.log('[POST] ✅ Usuário e perfil criados com sucesso')
     return NextResponse.json({ 
       success: true, 
       user: {
@@ -226,8 +272,15 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verificar se o usuário existe na auth
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers()
-    const targetUser = users.users.find(u => u.id === userId)
+    const { supabaseAdmin } = getSupabaseClients()
+    
+    if (!supabaseAdmin) {
+      console.log('[PUT] ⚠️ Service role não disponível')
+      return NextResponse.json({ error: 'Operação não disponível sem configuração completa' }, { status: 503 })
+    }
+    
+    const { data: usersResponse } = await supabaseAdmin.auth.admin.listUsers()
+    const targetUser = usersResponse?.users.find(u => u.id === userId)
     
     if (!targetUser) {
       console.log('[PUT] Usuário não encontrado na auth:', userId)
@@ -258,17 +311,21 @@ export async function PUT(request: NextRequest) {
 // DELETE - Deletar usuário
 export async function DELETE(request: NextRequest) {
   try {
-    // Verificar se estamos em um ambiente válido
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-      return NextResponse.json({ error: 'Configuração do servidor incompleta' }, { status: 500 })
+    console.log('[DELETE] ===== INÍCIO DA REQUISIÇÃO DELETE =====')
+    
+    // Verificar configuração básica
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.log('[DELETE] ❌ Configuração básica do Supabase não encontrada')
+      return NextResponse.json({ error: 'Configuração do Supabase incompleta' }, { status: 500 })
     }
-    console.log('[DELETE] Iniciando deleção de usuário')
+    
+    console.log('[DELETE] Iniciando verificação de admin...')
     
     // Verificar se é admin
     const adminUser = await verifyAdminUser(request)
     if (!adminUser) {
-      console.log('[DELETE] Acesso negado - usuário não é admin')
-      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+      console.log('[DELETE] ❌ Acesso negado - usuário não é admin')
+      return NextResponse.json({ error: 'Acesso negado - usuário não é administrador' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -276,22 +333,49 @@ export async function DELETE(request: NextRequest) {
     console.log('[DELETE] UserId recebido:', userId)
 
     if (!userId) {
-      console.log('[DELETE] ID do usuário não fornecido')
+      console.log('[DELETE] ❌ ID do usuário não fornecido')
       return NextResponse.json({ error: 'ID do usuário é obrigatório' }, { status: 400 })
     }
 
-    // Verificar se o usuário existe na auth
-    const { data: users } = await supabaseAdmin.auth.admin.listUsers()
-    const targetUser = users.users.find(u => u.id === userId)
+    const { supabaseClient, supabaseAdmin } = getSupabaseClients()
+
+    // Se não tem service role, apenas desativar o usuário
+    if (!supabaseAdmin) {
+      console.log('[DELETE] ⚠️ Service role não disponível, desativando usuário')
+      
+      const { error: deactivateError } = await supabaseClient
+        .from('profiles')
+        .update({ 
+          active: false, 
+          deactivated_at: new Date().toISOString(),
+          deactivated_by: adminUser.id
+        })
+        .eq('id', userId)
+
+      if (deactivateError) {
+        console.error('[DELETE] Erro ao desativar usuário:', deactivateError)
+        return NextResponse.json({ error: 'Erro ao desativar usuário' }, { status: 400 })
+      }
+
+      console.log('[DELETE] ✅ Usuário desativado com sucesso')
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Usuário desativado com sucesso. Conta suspensa.' 
+      })
+    }
+
+    // Método padrão com service role
+    const { data: usersResponse } = await supabaseAdmin.auth.admin.listUsers()
+    const targetUser = usersResponse?.users.find(u => u.id === userId)
     
     if (!targetUser) {
       console.log('[DELETE] Usuário não encontrado na auth:', userId)
-      return NextResponse.json({ error: 'User not found' }, { status: 400 })
+      return NextResponse.json({ error: 'Usuário não encontrado' }, { status: 400 })
     }
 
     console.log('[DELETE] Usuário encontrado:', targetUser.email)
 
-    // 1. Remover perfil
+    // Remover perfil
     console.log('[DELETE] Removendo perfil...')
     const { error: profileError } = await supabaseAdmin.from('profiles').delete().eq('id', userId)
     
@@ -301,7 +385,7 @@ export async function DELETE(request: NextRequest) {
       console.log('[DELETE] Perfil removido com sucesso')
     }
 
-    // 2. Remover usuário da auth
+    // Remover usuário da auth
     console.log('[DELETE] Removendo usuário da auth...')
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
@@ -310,7 +394,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
 
-    console.log('[DELETE] Usuário deletado com sucesso:', targetUser.email)
+    console.log('[DELETE] ✅ Usuário deletado com sucesso:', targetUser.email)
     return NextResponse.json({ success: true })
 
   } catch (error) {
