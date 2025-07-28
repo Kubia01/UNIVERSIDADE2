@@ -99,16 +99,66 @@ export const emergencyQuery = async <T>(
   return { data: null, error: new Error('Número máximo de tentativas excedido') }
 }
 
+// Função para pré-aquecer cache de usuários não-admin
+export const prewarmNonAdminCache = async () => {
+  console.log('🔥 [Emergency] Pré-aquecendo cache para usuários não-admin...')
+  
+  try {
+    // Verificar se já existe cache
+    const cachedCourses = coursesCache.get('users-published', false)
+    if (cachedCourses) {
+      console.log('⚡ [Emergency] Cache de usuários não-admin já aquecido')
+      return { data: cachedCourses, error: null }
+    }
+    
+    // Carregar cursos publicados uma vez para todos os usuários não-admin
+    const result = await emergencyQuery(
+      async () => {
+        return await supabase
+          .from('courses')
+          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
+          .eq('is_published', true)
+          .order('created_at', { ascending: false })
+          .limit(100)
+      },
+      'courses-users-published',
+      4 * 60 * 60 * 1000 // 4 horas
+    )
+    
+    if (result.data && !result.error) {
+      coursesCache.set('users-published', false, result.data)
+      console.log(`🔥 [Emergency] Cache pré-aquecido: ${result.data.length} cursos publicados`)
+    }
+    
+    return result
+  } catch (error) {
+    console.error('❌ [Emergency] Erro ao pré-aquecer cache:', error)
+    return { data: null, error }
+  }
+}
+
 // Funções específicas para queries comuns
 export const emergencyGetCourses = async (userId: string, isAdmin: boolean = false) => {
   // VERIFICAR ULTRA CACHE PRIMEIRO
-  const cachedCourses = coursesCache.get(userId, isAdmin)
+  let cachedCourses = coursesCache.get(userId, isAdmin)
+  
+  // OTIMIZAÇÃO EXTRA: Se não é admin e não tem cache específico, tentar cache compartilhado
+  if (!cachedCourses && !isAdmin) {
+    cachedCourses = coursesCache.get('users-published', false)
+    if (cachedCourses) {
+      console.log('⚡ ULTRA CACHE HIT: Cursos compartilhados para usuário não-admin')
+      return { data: cachedCourses, error: null }
+    }
+  }
+  
   if (cachedCourses) {
     console.log('⚡ ULTRA CACHE HIT: Cursos')
     return { data: cachedCourses, error: null }
   }
   
-  const cacheKey = `courses-${userId}-${isAdmin}`
+  // OTIMIZAÇÃO: Usar cache compartilhado para usuários não-admin
+  // Todos os usuários não-admin veem os mesmos cursos publicados
+  const cacheKey = isAdmin ? `courses-admin-true` : `courses-users-published`
   
   const result = await emergencyQuery(
     async () => {
@@ -121,7 +171,7 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
           .order('created_at', { ascending: false })
           .limit(200) // Aumentar limite para admins
       } else {
-        // Usuários normais veem APENAS cursos publicados
+        // OTIMIZAÇÃO: Usuários normais compartilham o mesmo cache de cursos publicados
         return await supabase
           .from('courses')
           .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
@@ -131,13 +181,15 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
       }
     },
     cacheKey,
-    2 * 60 * 60 * 1000 // 2 HORAS de cache - aumentar para melhor performance
+    4 * 60 * 60 * 1000 // 4 HORAS de cache - cache mais longo para melhor performance
   )
   
-  // Salvar no ULTRA CACHE também
+  // Salvar no ULTRA CACHE também - usar cache key otimizado
   if (result.data && !result.error) {
-    coursesCache.set(userId, isAdmin, result.data)
-    console.log(`✅ Cursos carregados: ${result.data.length} encontrados`)
+    // Para usuários não-admin, salvar com a key compartilhada
+    const optimizedUserId = isAdmin ? userId : 'users-published'
+    coursesCache.set(optimizedUserId, isAdmin, result.data)
+    console.log(`✅ Cursos carregados: ${result.data.length} encontrados (cache: ${cacheKey})`)
   }
   
   return result

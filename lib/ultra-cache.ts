@@ -157,11 +157,15 @@ if (typeof window !== 'undefined') {
 // Funções específicas para cada tipo de dados
 export const coursesCache = {
   get: (userId: string, isAdmin: boolean) => {
-    return ultraCache.get(`courses-${userId}-${isAdmin}`)
+    // OTIMIZAÇÃO: Usar cache compartilhado para usuários não-admin
+    const cacheKey = isAdmin ? `courses-${userId}-${isAdmin}` : 'courses-users-published'
+    return ultraCache.get(cacheKey)
   },
   
   set: (userId: string, isAdmin: boolean, data: any) => {
-    ultraCache.set(`courses-${userId}-${isAdmin}`, data, DEFAULT_TTLS.courses)
+    // OTIMIZAÇÃO: Usar cache compartilhado para usuários não-admin  
+    const cacheKey = isAdmin ? `courses-${userId}-${isAdmin}` : 'courses-users-published'
+    ultraCache.set(cacheKey, data, DEFAULT_TTLS.courses)
   }
 }
 
