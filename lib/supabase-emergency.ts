@@ -128,39 +128,19 @@ export const emergencyQuery = async <T>(
 
 // Funções específicas para queries comuns
 export const emergencyGetCourses = async (userId: string, isAdmin: boolean = false) => {
-  // VERIFICAR ULTRA CACHE PRIMEIRO
-  let cachedCourses = coursesCache.get(userId, isAdmin)
+  // CORREÇÃO AGRESSIVA: Ignorar cache corrompido para usuários não-admin
+  const cacheUserId = isAdmin ? 'admin' : userId
   
-  // OTIMIZAÇÃO EXTRA: Se não é admin e não tem cache específico, tentar cache específico do usuário
-  if (!cachedCourses && !isAdmin) {
-    cachedCourses = coursesCache.get(`user-${userId}`, false)
-    if (cachedCourses) {
-      console.log('⚡ ULTRA CACHE HIT: Cursos específicos do usuário')
-      return { data: cachedCourses, error: null }
-    }
-  }
-  
-  if (cachedCourses) {
-    console.log('⚡ ULTRA CACHE HIT: Cursos')
-    return { data: cachedCourses, error: null }
-  }
-  
-  // OTIMIZAÇÃO: Usar cache específico para cada usuário não-admin para respeitar atribuições
-  const cacheKey = isAdmin ? `courses-admin-true` : `courses-user-${userId}`
-  
-  const result = await emergencyQuery(
-    async () => {
-      // Query OTIMIZADA - garantir que cursos publicados sejam sempre visíveis
-      if (isAdmin) {
-        // Admin vê TODOS os cursos (publicados e não publicados)
-        return await supabase
-          .from('courses')
-          .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
-          .order('created_at', { ascending: false })
-          .limit(200) // Aumentar limite para admins
-      } else {
-        // CORREÇÃO: Usuários normais só veem cursos atribuídos a eles
-        // Primeiro verificar se existe a tabela course_assignments
+  // Para usuários não-admin, SEMPRE forçar recarga da base para garantir dados corretos
+  if (!isAdmin) {
+    console.log('🔄 USUÁRIO NÃO-ADMIN: Forçando carregamento direto da base (ignorando cache)')
+    
+    // Cache específico para usuário
+    const cacheKey = `courses-user-${userId}`
+    
+    const result = await emergencyQuery(
+      async () => {
+        // Tentar buscar cursos atribuídos primeiro
         try {
           const { data: assignedCourses, error: assignmentError } = await supabase
             .from('courses')
@@ -168,53 +148,69 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
               id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at,
               course_assignments!inner(user_id)
             `)
-            .eq('course_assignments.user_id', userId)
+            .eq('course_assignments.user_id', userId) // USAR userId REAL
             .eq('is_published', true)
             .order('created_at', { ascending: false })
             .limit(100)
           
-          if (assignmentError) {
-            // Se a tabela course_assignments não existe, mostrar apenas cursos do departamento do usuário
-            console.log('⚠️ Tabela course_assignments não encontrada, usando filtro por departamento')
-            
-            // Buscar o departamento do usuário
-            const { data: userProfile } = await supabase
-              .from('profiles')
-              .select('department')
-              .eq('id', userId)
-              .single()
-            
-            if (userProfile?.department) {
-              return await supabase
-                .from('courses')
-                .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
-                .eq('is_published', true)
-                .eq('department', userProfile.department)
-                .order('created_at', { ascending: false })
-                .limit(100)
-            } else {
-              // Se não conseguir determinar o departamento, não mostrar cursos
-              return { data: [], error: null }
-            }
+          // Se deu certo e encontrou cursos, retornar
+          if (!assignmentError && assignedCourses && assignedCourses.length > 0) {
+            console.log(`✅ Cursos atribuídos encontrados: ${assignedCourses.length}`)
+            return { data: assignedCourses, error: null }
           }
           
-          return { data: assignedCourses, error: null }
+          // Se não encontrou ou deu erro
+          console.log('⚠️ Sem atribuições encontradas para:', userId)
+          console.log('💡 Administrador deve atribuir cursos na seção "Atribuição de Cursos"')
+          
+          return { data: [], error: null }
+          
         } catch (error) {
-          console.error('Erro ao verificar atribuições:', error)
-          // Fallback: não mostrar cursos se houver erro
+          console.error('❌ Erro ao verificar atribuições:', error)
           return { data: [], error: null }
         }
-      }
+      },
+      cacheKey,
+      5 * 60 * 1000 // 5 minutos de cache
+    )
+    
+    // Salvar no ultra cache
+    if (result.data && !result.error) {
+      coursesCache.set(cacheUserId, isAdmin, result.data)
+      console.log(`✅ Cursos carregados: ${result.data.length} encontrados (cache: ${cacheKey})`)
+    }
+    
+    return result
+  }
+  
+  // Para ADMINS: verificar cache normalmente
+  let cachedCourses = coursesCache.get(cacheUserId, isAdmin)
+  
+  if (cachedCourses) {
+    console.log('⚡ ULTRA CACHE HIT: Cursos (admin)')
+    return { data: cachedCourses, error: null }
+  }
+  
+  // Cache específico para admin
+  const cacheKey = `courses-admin-true`
+  
+  const result = await emergencyQuery(
+    async () => {
+      // Admin vê TODOS os cursos (publicados e não publicados)
+      return await supabase
+        .from('courses')
+        .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
+        .order('created_at', { ascending: false })
+        .limit(200) // Aumentar limite para admins
     },
     cacheKey,
-    2 * 60 * 60 * 1000 // 2 HORAS de cache - cache específico por usuário
+    2 * 60 * 60 * 1000 // 2 HORAS de cache
   )
   
-  // Salvar no ULTRA CACHE também - usar cache key específico do usuário
+  // Salvar no ULTRA CACHE também - usar chave de cache correta
   if (result.data && !result.error) {
-    // Para usuários não-admin, salvar com a key específica do usuário
-    const optimizedUserId = isAdmin ? userId : `user-${userId}`
-    coursesCache.set(optimizedUserId, isAdmin, result.data)
+    // CORREÇÃO: Usar o mesmo cacheUserId definido no início
+    coursesCache.set(cacheUserId, isAdmin, result.data)
     console.log(`✅ Cursos carregados: ${result.data.length} encontrados (cache: ${cacheKey})`)
   }
   
