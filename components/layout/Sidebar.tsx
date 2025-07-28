@@ -36,8 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onViewChange, isOpen, onC
       return [
         { id: 'dashboard', icon: Home, label: 'Dashboard' },
         { id: 'courses', icon: BookOpen, label: 'Cursos e Treinamentos' },
-        { id: 'certificates', icon: Award, label: 'Certificados' },
-        { id: 'notifications', icon: UserCog, label: 'Informações' }
+        { id: 'certificates', icon: Award, label: 'Certificados' }
       ]
     }
   }
