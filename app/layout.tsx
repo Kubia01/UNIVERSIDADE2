@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { AdaptiveColorsProvider } from '@/components/providers/AdaptiveColorsProvider'
+import AdaptiveColorsProvider from '@/components/providers/AdaptiveColorsProvider'
 import OfflineNotification from '@/components/ui/OfflineNotification'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -30,7 +30,7 @@ export default function RootLayout({
           `
         }} />
       </head>
-      <body className={inter.className} suppressHydrationWarnings>
+      <body className={inter.className} suppressHydrationWarning>
         <AdaptiveColorsProvider>
           <OfflineNotification />
           {children}
