@@ -310,9 +310,9 @@ export default function HomePage() {
       console.log('📊 [Dashboard] Carregando cursos via sistema de emergência para:', targetUserId)
       const isTargetAdmin = selectedEmployee ? selectedEmployee.role === 'admin' : currentUser.role === 'admin'
       
-      // OTIMIZAÇÃO: Para usuários não-admin, usar cache compartilhado
+      // CORREÇÃO: Para usuários não-admin, usar o targetUserId real
       const coursesResult = await emergencyGetCourses(
-        isTargetAdmin ? 'admin' : 'users-published', 
+        isTargetAdmin ? 'admin' : targetUserId, 
         isTargetAdmin
       )
       
