@@ -1,7 +1,7 @@
 /**
- * Sistema de Detecção de Navegador e Adaptação de Cores
+ * Sistema de Detecção de Navegador e Adaptação de Cores - SILENCIOSO
  * Detecta o navegador, sistema operacional e preferências do usuário
- * para adaptar cores e textos automaticamente
+ * para adaptar cores e textos automaticamente (SEM LOGS VISÍVEIS)
  */
 
 export interface BrowserInfo {
@@ -45,7 +45,7 @@ export interface ColorScheme {
   }
 }
 
-// Detectar navegador
+// Detectar navegador - SEM EXPOSIÇÃO DE DADOS SENSÍVEIS
 export const detectBrowser = (): BrowserInfo => {
   if (typeof window === 'undefined') {
     return {
@@ -60,12 +60,13 @@ export const detectBrowser = (): BrowserInfo => {
     }
   }
 
+  // DETECÇÃO SILENCIOSA - SEM LOGS
   const userAgent = navigator.userAgent
   let browserName = 'Unknown'
   let browserVersion = 'Unknown'
   let osName = 'Unknown'
 
-  // Detectar navegador
+  // Detectar navegador (silenciosamente)
   if (userAgent.includes('Firefox')) {
     browserName = 'Firefox'
     const match = userAgent.match(/Firefox\/(\d+)/)
@@ -88,7 +89,7 @@ export const detectBrowser = (): BrowserInfo => {
     browserVersion = match ? match[2] : 'Unknown'
   }
 
-  // Detectar sistema operacional
+  // Detectar sistema operacional (silenciosamente)
   if (userAgent.includes('Windows')) {
     osName = 'Windows'
   } else if (userAgent.includes('Mac')) {
@@ -101,7 +102,7 @@ export const detectBrowser = (): BrowserInfo => {
     osName = 'iOS'
   }
 
-  // Detectar mobile
+  // Detectar mobile (silenciosamente)
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent)
 
   // Detectar suporte a color-scheme
@@ -410,18 +411,8 @@ export const watchColorSchemeChanges = (callback: (scheme: ColorScheme) => void)
   }
 }
 
-// Log informações do navegador para debug
+// FUNÇÃO DE LOG REMOVIDA - NÃO EXPOR INFORMAÇÕES DO NAVEGADOR
 export const logBrowserInfo = (): void => {
-  if (typeof console === 'undefined') return
-
-  const info = detectBrowser()
-  console.log('🌐 [Browser Detection] Informações do navegador:', {
-    navegador: `${info.name} ${info.version}`,
-    sistema: info.os,
-    mobile: info.isMobile ? 'Sim' : 'Não',
-    modoEscuro: info.prefersDark ? 'Sim' : 'Não',
-    altoContraste: info.hasHighContrast ? 'Sim' : 'Não',
-    suporteColorScheme: info.supportsColorScheme ? 'Sim' : 'Não',
-    suporteP3: info.supportsP3 ? 'Sim' : 'Não'
-  })
+  // LOGS REMOVIDOS PARA PRIVACIDADE - DETECÇÃO SILENCIOSA
+  return
 }

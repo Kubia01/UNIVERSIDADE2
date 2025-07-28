@@ -1,6 +1,7 @@
 /**
- * Sistema de compatibilidade entre navegadores
+ * Sistema de compatibilidade entre navegadores - SILENCIOSO
  * Detecta o navegador e aplica ajustes específicos para melhor legibilidade
+ * (SEM LOGS VISÍVEIS)
  */
 
 export interface BrowserInfo {
@@ -32,7 +33,7 @@ export const detectBrowser = (): BrowserInfo => {
   let name = 'unknown'
   let version = '0'
   
-  // Detectar navegador
+  // Detectar navegador (silenciosamente)
   if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) {
     name = 'chrome'
     const match = userAgent.match(/Chrome\/(\d+)/)
@@ -188,7 +189,7 @@ export const applyBrowserAdjustments = (browser: BrowserInfo, adjustments: Theme
     document.body.classList.add('is-high-dpi')
   }
   
-  console.log(`🎨 Ajustes aplicados para ${browser.name} v${browser.version}:`, adjustments)
+  // LOGS REMOVIDOS - FUNCIONAMENTO SILENCIOSO
 }
 
 export const initBrowserCompatibility = () => {

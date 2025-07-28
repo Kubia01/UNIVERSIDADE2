@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation'
 import { getCurrentUser } from '@/lib/auth'
 import { supabase, User, Course, Lesson, Department } from '@/lib/supabase'
 import { cacheHelpers } from '@/lib/cache'
-import { emergencyGetVideos, emergencyGetCourses, useFallbackData } from '@/lib/supabase-emergency'
+import { emergencyGetVideos, emergencyGetCourses } from '@/lib/supabase-emergency'
 import Sidebar from '@/components/layout/Sidebar'
 import Header from '@/components/layout/Header'
 import UserManagement from '@/components/admin/UserManagement'
@@ -625,9 +625,8 @@ export default function HomePage() {
       if (result.error) {
         console.error('[page.tsx] ❌ Erro ao carregar aulas:', result.error)
         
-        // Usar dados de fallback se disponível
-        const fallbackVideos = useFallbackData('videos', course.id)
-        videos = fallbackVideos as any[]
+        // Sistema apenas online - sem dados de fallback
+        videos = []
         
         if (videos.length === 0) {
           alert('⚠️ Não foi possível carregar as aulas. Tente novamente em alguns instantes.')

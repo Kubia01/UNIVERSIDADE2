@@ -5,7 +5,7 @@ import { Search, BookOpen, Play, Clock, Award, Filter, ChevronRight, Users, Buil
 import { supabase, Course, Department, CourseType, User } from '@/lib/supabase'
 import { cacheHelpers } from '@/lib/cache'
 import { CourseCardSkeleton, FastLoading } from '@/components/ui/SkeletonLoader'
-import { emergencyGetCourses, emergencyGetVideos, useFallbackData } from '@/lib/supabase-emergency'
+import { emergencyGetCourses, emergencyGetVideos } from '@/lib/supabase-emergency'
 
 interface CourseViewerProps {
   user: User
@@ -153,10 +153,9 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
           return
         }
         
-        // Usar dados de fallback como último recurso (apenas para admins)
-        console.log('[CourseViewer] 🚨 Usando dados de fallback')
-        const fallbackCourses = useFallbackData('courses') as Course[]
-        setCourses(fallbackCourses)
+        // SEM DADOS DE FALLBACK - SISTEMA APENAS ONLINE
+        console.log('[CourseViewer] 🚨 Erro na conexão - sistema funciona apenas online')
+        setCourses([])
         setConnectionError(true)
         setLoading(false)
         return
