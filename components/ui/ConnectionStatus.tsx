@@ -108,15 +108,21 @@ export const useConnectionStatus = () => {
   const [lastError, setLastError] = useState<string>('')
 
   useEffect(() => {
+    const updateOnlineStatus = () => setIsOnline(navigator.onLine)
+    
+    // SISTEMA OFFLINE DESATIVADO - APENAS DETECTAR STATUS ONLINE
     const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
-
+    // Removido handleOffline - sistema não funciona offline
+    
+    // Inicializar status
+    updateOnlineStatus()
+    
+    // Listeners apenas para status online
     window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-
+    
     return () => {
       window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
+      // Removido removeEventListener para offline
     }
   }, [])
 

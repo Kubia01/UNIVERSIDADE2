@@ -375,24 +375,57 @@ Ou consulte o arquivo create-storage-bucket.md para instruções detalhadas.`)
   }
 
   const handleAddLesson = () => {
-    if (!currentLesson.title || !currentLesson.content) {
-      alert('Por favor, preencha o título e o conteúdo da aula.')
+    // Validação melhorada para templates/aulas
+    if (!currentLesson.title || !currentLesson.title.trim()) {
+      alert('❌ Por favor, preencha o título da aula/template.')
+      return
+    }
+
+    if (!currentLesson.content || !currentLesson.content.trim()) {
+      alert('❌ Por favor, adicione o conteúdo da aula/template (URL ou arquivo).')
+      return
+    }
+
+    // Validação específica para URLs
+    if (currentLesson.type === 'video' && currentLesson.content.startsWith('http')) {
+      try {
+        new URL(currentLesson.content)
+      } catch (error) {
+        alert('❌ URL inválida. Por favor, verifique o link do vídeo.')
+        return
+      }
+    }
+
+    // Validação de duração
+    if (currentLesson.duration < 0) {
+      alert('❌ A duração deve ser um valor positivo.')
       return
     }
 
     const newLesson = {
       ...currentLesson,
-      order_index: courseData.lessons.length
+      title: currentLesson.title.trim(),
+      description: currentLesson.description.trim(),
+      content: currentLesson.content.trim(),
+      order_index: editingLessonIndex !== null ? editingLessonIndex : courseData.lessons.length,
+      id: editingLessonIndex !== null ? courseData.lessons[editingLessonIndex]?.id : undefined
     }
 
+    console.log('✅ Adicionando nova aula/template:', newLesson)
+
     if (editingLessonIndex !== null) {
+      // Editando aula existente
       const updatedLessons = [...courseData.lessons]
       updatedLessons[editingLessonIndex] = newLesson
       setCourseData({ ...courseData, lessons: updatedLessons })
+      console.log('✅ Template/aula editada com sucesso!')
     } else {
+      // Adicionando nova aula
       setCourseData({ ...courseData, lessons: [...courseData.lessons, newLesson] })
+      console.log('✅ Novo template/aula adicionada ao módulo!')
     }
 
+    // Resetar formulário
     setCurrentLesson({
       title: '',
       description: '',
@@ -402,6 +435,10 @@ Ou consulte o arquivo create-storage-bucket.md para instruções detalhadas.`)
     })
     setEditingLessonIndex(null)
     setShowLessonForm(false)
+    setViewMode('list')
+    
+    // Feedback visual de sucesso
+    alert(`✅ ${editingLessonIndex !== null ? 'Template atualizado' : 'Template adicionado ao módulo'} com sucesso!`)
   }
 
   const handleEditLesson = (index: number) => {
@@ -431,34 +468,61 @@ Ou consulte o arquivo create-storage-bucket.md para instruções detalhadas.`)
   }
 
   const handleSaveCourse = () => {
-    if (!courseData.title || !courseData.description || !courseData.instructor) {
-      alert('Por favor, preencha todos os campos obrigatórios do curso.')
+    // Validação aprimorada dos campos obrigatórios
+    if (!courseData.title || !courseData.title.trim()) {
+      alert('❌ Por favor, preencha o título do curso.')
+      return
+    }
+
+    if (!courseData.description || !courseData.description.trim()) {
+      alert('❌ Por favor, preencha a descrição do curso.')
+      return
+    }
+
+    if (!courseData.instructor || !courseData.instructor.trim()) {
+      alert('❌ Por favor, preencha o nome do instrutor.')
       return
     }
 
     if (courseData.lessons.length === 0) {
-      alert('Por favor, adicione pelo menos uma aula ao curso.')
+      alert('❌ Por favor, adicione pelo menos um template/aula ao módulo do curso.')
       return
     }
 
-    // Validar se todas as aulas têm título e conteúdo
-    const invalidLessons = courseData.lessons.filter(lesson => !lesson.title || !lesson.content)
+    // Validação melhorada das aulas/templates
+    const invalidLessons = courseData.lessons.filter((lesson, index) => {
+      if (!lesson.title || !lesson.title.trim()) {
+        alert(`❌ Template/aula ${index + 1} está sem título. Por favor, verifique.`)
+        return true
+      }
+      if (!lesson.content || !lesson.content.trim()) {
+        alert(`❌ Template/aula "${lesson.title}" está sem conteúdo. Por favor, adicione o conteúdo.`)
+        return true
+      }
+      return false
+    })
+
     if (invalidLessons.length > 0) {
-      alert('Todas as aulas devem ter título e conteúdo preenchidos.')
       return
     }
 
+    // Calcular duração total dos templates/aulas
     const totalDuration = courseData.lessons.reduce((acc, lesson) => acc + (lesson.duration || 0), 0)
     
     const newCourse = {
       ...courseData,
+      title: courseData.title.trim(),
+      description: courseData.description.trim(),
+      instructor: courseData.instructor.trim(),
       duration: totalDuration,
       is_published: true,
       created_at: course?.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
 
-    console.log('Salvando curso com aulas:', newCourse)
+    console.log('✅ Salvando curso com templates/módulos:', newCourse)
+    console.log('📚 Total de templates/aulas no módulo:', newCourse.lessons.length)
+    
     onSave(newCourse)
   }
 

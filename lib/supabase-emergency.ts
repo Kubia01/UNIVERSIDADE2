@@ -9,10 +9,10 @@ import { coursesCache, videosCache } from './ultra-cache'
 
 // Configurações para conectividade - SEM FALLBACK OFFLINE
 const RETRY_CONFIG = {
-  maxRetries: 3, // 3 tentativas rápidas
-  baseDelay: 200, // 200ms delay base - muito rápido  
-  maxDelay: 800, // 800ms delay máximo - muito rápido
-  timeoutMs: 3000 // 3 segundos timeout - ultra agressivo
+  maxRetries: 5, // Aumentar para 5 tentativas
+  baseDelay: 500, // 500ms delay base - mais conservativo
+  maxDelay: 3000, // 3s delay máximo - mais tempo
+  timeoutMs: 10000 // 10 segundos timeout - bem mais generoso
 }
 
 // Função para delay com backoff exponencial
@@ -112,29 +112,32 @@ export const emergencyGetCourses = async (userId: string, isAdmin: boolean = fal
   
   const result = await emergencyQuery(
     async () => {
-      // Query OTIMIZADA - campos essenciais para performance (sem updated_at)
+      // Query OTIMIZADA - garantir que cursos publicados sejam sempre visíveis
       if (isAdmin) {
+        // Admin vê TODOS os cursos (publicados e não publicados)
         return await supabase
           .from('courses')
           .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
           .order('created_at', { ascending: false })
-          .limit(100) // AUMENTAR limite para suportar mais cursos
+          .limit(200) // Aumentar limite para admins
       } else {
-        // Para usuários normais, buscar TODOS os cursos - campos essenciais
+        // Usuários normais veem APENAS cursos publicados
         return await supabase
           .from('courses')
           .select('id, title, description, type, duration, instructor, department, is_published, is_mandatory, thumbnail, created_at')
+          .eq('is_published', true) // GARANTIR que apenas cursos publicados sejam visíveis
           .order('created_at', { ascending: false })
-          .limit(50) // AUMENTAR limite para usuários também
+          .limit(100) // Limite para usuários
       }
     },
     cacheKey,
-    60 * 60 * 1000 // 1 HORA de cache
+    2 * 60 * 60 * 1000 // 2 HORAS de cache - aumentar para melhor performance
   )
   
   // Salvar no ULTRA CACHE também
   if (result.data && !result.error) {
     coursesCache.set(userId, isAdmin, result.data)
+    console.log(`✅ Cursos carregados: ${result.data.length} encontrados`)
   }
   
   return result
