@@ -93,20 +93,34 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
     // CHAMAR IMEDIATAMENTE - sem timeouts complicados
     console.log('[CourseViewer] 📞 Chamando loadCourses() imediatamente')
     
-    // LIMPEZA DE CACHE na primeira carga para garantir dados atualizados
-    if (renderCount.current === 1) {
-      console.log('[CourseViewer] 🧹 Primeira carga - limpando cache antigo')
-      const cacheKey = user.role === 'admin' ? 'courses-admin-true' : `courses-user-${user.id}`
-      // Limpar cache do appCache
+    // LIMPEZA AGRESSIVA DE CACHE para usuários não-admin
+    if (renderCount.current === 1 && user.role !== 'admin') {
+      console.log('[CourseViewer] 🧹 Limpeza agressiva de cache para usuário não-admin')
+      // Limpar TODOS os caches relacionados a cursos
       if (typeof window !== 'undefined' && window.localStorage) {
         const oldKeys = Object.keys(localStorage).filter(key => 
-          key.includes('courses-users-published') || 
-          key.includes('ultra-cache-courses')
+          key.includes('courses-') || 
+          key.includes('ultra-cache-') ||
+          key.includes('emergency-')
         )
         oldKeys.forEach(key => {
-          console.log('[CourseViewer] 🗑️ Removendo cache antigo:', key)
+          console.log('[CourseViewer] 🗑️ Removendo cache:', key)
           localStorage.removeItem(key)
         })
+      }
+      
+      // Limpar também cache em memória se possível
+      if (typeof window !== 'undefined' && (window as any).ultraCache) {
+        console.log('[CourseViewer] 🗑️ Limpando ultra cache em memória')
+        try {
+          Object.keys((window as any).ultraCache).forEach((key: string) => {
+            if (key.includes('courses') || key.includes(user.id)) {
+              delete (window as any).ultraCache[key]
+            }
+          })
+        } catch (e) {
+          console.log('[CourseViewer] ⚠️ Erro ao limpar ultra cache:', e)
+        }
       }
     }
     
