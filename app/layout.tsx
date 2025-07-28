@@ -1,23 +1,14 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import '../styles/browser-compatibility-lite.css'
-import AdaptiveColorsProvider from '@/components/providers/AdaptiveColorsProvider'
+import { AdaptiveColorsProvider } from '@/components/providers/AdaptiveColorsProvider'
 import OfflineNotification from '@/components/ui/OfflineNotification'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Universidade Corporativa',
-  description: 'Plataforma de treinamento e desenvolvimento para colaboradores',
-  keywords: ['treinamento', 'educação', 'corporativo', 'desenvolvimento'],
-  authors: [{ name: 'Universidade Corporativa' }],
-  openGraph: {
-    title: 'Universidade Corporativa',
-    description: 'Plataforma de treinamento e desenvolvimento para colaboradores',
-    type: 'website',
-    locale: 'pt_BR',
-  },
+  title: 'Sistema de Treinamento',
+  description: 'Plataforma de treinamento e capacitação empresarial',
 }
 
 export default function RootLayout({
@@ -27,22 +18,30 @@ export default function RootLayout({
 }) {
   return (
     <html lang="pt-BR">
-      <body className={inter.className}>
-        <AdaptiveColorsProvider>
-          <OfflineNotification />
-          <div className="min-h-screen adaptive-bg">
-            {children}
-          </div>
-        </AdaptiveColorsProvider>
-        <script dangerouslySetInnerHTML={{
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <link rel="icon" href="/favicon.ico" />
+        <style dangerouslySetInnerHTML={{
           __html: `
-            // Compatibilidade leve inline
-            if (navigator.userAgent.includes('Firefox')) {
-              document.documentElement.style.setProperty('--font-weight-light', '400');
-              document.documentElement.style.setProperty('--font-weight-normal', '500');
+            .browser-adjusting * {
+              transition: none !important;
+              animation: none !important;
             }
           `
         }} />
+      </head>
+      <body className={inter.className} suppressHydrationWarnings>
+        <AdaptiveColorsProvider>
+          <OfflineNotification />
+          {children}
+        </AdaptiveColorsProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // CÓDIGO DE DETECÇÃO ESPECÍFICA REMOVIDO - FUNCIONAMENTO SILENCIOSO
+            `,
+          }}
+        />
       </body>
     </html>
   )

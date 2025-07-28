@@ -65,7 +65,7 @@ export const useAdaptiveColors = (): UseAdaptiveColorsReturn => {
   const [isLoading, setIsLoading] = useState(true)
 
   const updateColorScheme = useCallback((newScheme: ColorScheme) => {
-    console.log('🎨 [AdaptiveColors] Aplicando novo esquema de cores')
+    // SILENCIOSO - SEM LOGS
     setColorScheme(newScheme)
     applyColorScheme(newScheme)
   }, [])
@@ -76,11 +76,7 @@ export const useAdaptiveColors = (): UseAdaptiveColorsReturn => {
     setBrowserInfo(info)
     updateColorScheme(scheme)
     
-    console.log('🔄 [AdaptiveColors] Esquema atualizado:', {
-      navegador: info.name,
-      modo: info.prefersDark ? 'Escuro' : 'Claro',
-      altoContraste: info.hasHighContrast ? 'Sim' : 'Não'
-    })
+    // LOGS REMOVIDOS - FUNCIONAMENTO SILENCIOSO
   }, [updateColorScheme])
 
   // Inicialização
@@ -89,7 +85,7 @@ export const useAdaptiveColors = (): UseAdaptiveColorsReturn => {
     
     const initializeColors = () => {
       try {
-        // Detectar informações do navegador
+        // Detectar informações do navegador (silenciosamente)
         const info = detectBrowser()
         
         // Gerar esquema de cores adaptativo
@@ -100,13 +96,11 @@ export const useAdaptiveColors = (): UseAdaptiveColorsReturn => {
           updateColorScheme(scheme)
           setIsLoading(false)
           
-          // Log informações para debug
-          logBrowserInfo()
-          
-          console.log('✅ [AdaptiveColors] Sistema de cores adaptativas inicializado')
+          // LOGS REMOVIDOS - FUNCIONAMENTO SILENCIOSO
         }
       } catch (error) {
-        console.error('❌ [AdaptiveColors] Erro ao inicializar cores:', error)
+        // Log mínimo apenas para erros críticos (sem expor dados do navegador)
+        console.error('❌ [AdaptiveColors] Erro ao inicializar cores')
         if (mounted) {
           setIsLoading(false)
         }
@@ -141,7 +135,7 @@ export const useAdaptiveColors = (): UseAdaptiveColorsReturn => {
       'adaptive-dark', 'adaptive-light', 'adaptive-high-contrast', 'adaptive-mobile'
     )
 
-    // Adicionar classes baseadas no navegador e sistema
+    // Adicionar classes baseadas no navegador e sistema (sem logs)
     body.classList.add(`browser-${browserInfo.name.toLowerCase()}`)
     body.classList.add(`os-${browserInfo.os.toLowerCase().replace('macos', 'macos')}`)
     
@@ -159,7 +153,7 @@ export const useAdaptiveColors = (): UseAdaptiveColorsReturn => {
       body.classList.add('adaptive-mobile')
     }
 
-    // Adicionar atributo para CSS personalizados
+    // Adicionar atributo para CSS personalizados (sem logs)
     body.setAttribute('data-browser', browserInfo.name.toLowerCase())
     body.setAttribute('data-os', browserInfo.os.toLowerCase())
     body.setAttribute('data-theme', browserInfo.prefersDark ? 'dark' : 'light')

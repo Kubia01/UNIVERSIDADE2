@@ -16,18 +16,14 @@ const BrowserCompatibility: React.FC<BrowserCompatibilityProps> = ({ children })
     // Adicionar classe temporária para desabilitar transições
     document.body.classList.add('browser-adjusting')
     
-    // Inicializar compatibilidade
+    // Inicializar compatibilidade (silenciosamente)
     const result = initBrowserCompatibility()
     
     if (result) {
       setBrowserInfo(result.browser)
       setAdjustments(result.adjustments)
       
-      // Log para debug
-      console.log('🌐 Navegador detectado:', result.browser.name, result.browser.version)
-      console.log('📱 Mobile:', result.browser.isMobile)
-      console.log('🖥️ High DPI:', result.browser.isHighDPI)
-      console.log('🎨 Ajustes aplicados:', result.adjustments)
+      // LOGS REMOVIDOS - FUNCIONAMENTO SILENCIOSO
     }
     
     // Remover classe após ajustes aplicados
@@ -52,51 +48,10 @@ const BrowserCompatibility: React.FC<BrowserCompatibilityProps> = ({ children })
     }
   }, [])
 
-  // Componente de debug (apenas em desenvolvimento)
-  const DebugInfo = () => {
-    if (process.env.NODE_ENV !== 'development' || !browserInfo || !adjustments) {
-      return null
-    }
-
-    return (
-      <div className="fixed bottom-4 right-4 z-50 bg-black/80 text-white text-xs p-3 rounded-lg max-w-xs">
-        <div className="font-bold mb-1">🌐 Compatibilidade</div>
-        <div>Navegador: {browserInfo.name} v{browserInfo.version}</div>
-        <div>Mobile: {browserInfo.isMobile ? 'Sim' : 'Não'}</div>
-        <div>High DPI: {browserInfo.isHighDPI ? 'Sim' : 'Não'}</div>
-        <div>Font Weight: {adjustments.fontWeight.normal}</div>
-        {adjustments.textShadow !== 'none' && (
-          <div>Text Shadow: Ativo</div>
-        )}
-        <div className="mt-1 text-gray-300">
-          Press Ctrl+Shift+B para alternar
-        </div>
-      </div>
-    )
-  }
-
-  // Listener para tecla de debug
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.key === 'B') {
-        e.preventDefault()
-        const debugElement = document.querySelector('.debug-browser-info')
-        if (debugElement) {
-          debugElement.classList.toggle('hidden')
-        }
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-
+  // COMPONENTE DE DEBUG REMOVIDO - NÃO EXPOR INFORMAÇÕES DO NAVEGADOR
   return (
     <>
       {children}
-      <div className="debug-browser-info hidden">
-        <DebugInfo />
-      </div>
       
       {/* Indicador de carregamento dos ajustes */}
       {!isInitialized && (
