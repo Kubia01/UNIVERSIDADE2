@@ -164,7 +164,9 @@ const CourseViewer: React.FC<CourseViewerProps> = React.memo(({ user, onCourseSe
       })
       
       // CORREÇÃO: Passar sempre o user.id real para verificar atribuições corretamente
+      console.log('[CourseViewer] 🔥 CHAMANDO emergencyGetCourses com:', { userId: user.id, isAdmin, userRole: user.role })
       const result = await emergencyGetCourses(user.id, isAdmin)
+      console.log('[CourseViewer] 🔥 RESULTADO emergencyGetCourses:', result)
       
       if (result.error) {
         console.error('[CourseViewer] ❌ Erro após todas as tentativas:', result.error)
