@@ -1,19 +1,20 @@
 /**
- * SISTEMA DE CACHE ULTRA AGRESSIVO
+ * SISTEMA DE CACHE ULTRA AGRESSIVO - PERFORMANCE EXTREMA
  * Cache global compartilhado entre todos os componentes
  */
 
-// Cache global em memória
+// Cache global em memória - OTIMIZADO
 const globalCache = new Map<string, { data: any; timestamp: number; ttl: number }>()
 
-// TTLs padrão (em milissegundos) - OTIMIZADO para performance
+// TTLs ULTRA AGRESSIVOS (em milissegundos) - PERFORMANCE EXTREMA
 const DEFAULT_TTLS = {
-  courses: 1 * 60 * 60 * 1000,    // 1 hora - mais agressivo
-  videos: 4 * 60 * 60 * 1000,     // 4 horas
-  users: 45 * 60 * 1000,          // 45 minutos - aumentado para reduzir consultas
-  certificates: 60 * 60 * 1000,   // 1 hora
-  assignments: 30 * 60 * 1000,    // 30 minutos
-  dashboard: 30 * 60 * 1000       // 30 minutos - aumentado para melhor performance
+  courses: 3 * 60 * 60 * 1000,    // 3 horas - MUITO mais agressivo
+  videos: 6 * 60 * 60 * 1000,     // 6 horas - dados raramente mudam
+  users: 2 * 60 * 60 * 1000,      // 2 horas - aumentado significativamente
+  certificates: 4 * 60 * 60 * 1000, // 4 horas - dados estáticos
+  assignments: 2 * 60 * 60 * 1000,  // 2 horas - aumentado
+  dashboard: 1 * 60 * 60 * 1000,    // 1 hora - dados de dashboard
+  emergency: 10 * 60 * 1000         // 10 minutos - dados emergenciais
 }
 
 export const ultraCache = {
@@ -54,156 +55,187 @@ export const ultraCache = {
     return cached.data
   },
 
-  // Função para limpar cache específico
-  delete: (key: string) => {
-    globalCache.delete(key)
-    console.log(`🗑️ CACHE DELETED: ${key}`)
+  // Função para forçar atualização - mas manter cache antigo até nova data chegar
+  refresh: async (key: string, refreshFn: () => Promise<any>, ttl?: number) => {
+    console.log(`🔄 CACHE REFRESH: ${key}`)
+    
+    try {
+      const newData = await refreshFn()
+      if (newData) {
+        ultraCache.set(key, newData, ttl)
+        return newData
+      }
+    } catch (error) {
+      console.log(`⚠️ CACHE REFRESH FAILED: ${key}, mantendo dados antigos`)
+      // Retornar dados antigos mesmo expirados em caso de erro
+      const cached = globalCache.get(key)
+      return cached?.data || null
+    }
   },
 
-  // Função para limpar todo o cache
+  // Limpar cache expirado
+  cleanup: () => {
+    const now = Date.now()
+    let cleaned = 0
+    
+    globalCache.forEach((cached, key) => {
+      if (now - cached.timestamp > cached.ttl) {
+        globalCache.delete(key)
+        cleaned++
+      }
+    })
+    
+    if (cleaned > 0) {
+      console.log(`🧹 CACHE CLEANUP: ${cleaned} itens removidos`)
+    }
+  },
+
+  // Estatísticas do cache
+  stats: () => {
+    const total = globalCache.size
+    const now = Date.now()
+    let expired = 0
+    
+    globalCache.forEach((cached) => {
+      if (now - cached.timestamp > cached.ttl) {
+        expired++
+      }
+    })
+    
+    return {
+      total,
+      active: total - expired,
+      expired
+    }
+  },
+
+  // Limpar tudo
   clear: () => {
     globalCache.clear()
     console.log('🧹 CACHE CLEARED COMPLETELY')
-  },
-
-  // Função para verificar se existe no cache
-  has: (key: string): boolean => {
-    const cached = globalCache.get(key)
-    if (!cached) return false
-    
-    const now = Date.now()
-    const age = now - cached.timestamp
-    
-    if (age > cached.ttl) {
-      globalCache.delete(key)
-      return false
-    }
-    
-    return true
-  },
-
-  // Função para obter estatísticas do cache
-  stats: () => {
-    const now = Date.now()
-    const entries = Array.from(globalCache.entries())
-    
-    const stats = {
-      totalEntries: entries.length,
-      validEntries: 0,
-      expiredEntries: 0,
-      totalSize: 0,
-      oldestEntry: null as string | null,
-      newestEntry: null as string | null
-    }
-    
-    let oldestTime = now
-    let newestTime = 0
-    
-    entries.forEach(([key, value]) => {
-      const age = now - value.timestamp
-      
-      if (age > value.ttl) {
-        stats.expiredEntries++
-      } else {
-        stats.validEntries++
-      }
-      
-      if (value.timestamp < oldestTime) {
-        oldestTime = value.timestamp
-        stats.oldestEntry = key
-      }
-      
-      if (value.timestamp > newestTime) {
-        newestTime = value.timestamp
-        stats.newestEntry = key
-      }
-      
-      // Estimar tamanho (aproximado)
-      stats.totalSize += JSON.stringify(value.data).length
-    })
-    
-    return stats
-  },
-
-  // Limpar entradas expiradas
-  cleanup: () => {
-    const now = Date.now()
-    const toDelete: string[] = []
-    
-    globalCache.forEach((value, key) => {
-      const age = now - value.timestamp
-      if (age > value.ttl) {
-        toDelete.push(key)
-      }
-    })
-    
-    toDelete.forEach(key => globalCache.delete(key))
-    
-    if (toDelete.length > 0) {
-      console.log(`🧹 CACHE CLEANUP: Removidas ${toDelete.length} entradas expiradas`)
-    }
-    
-    return toDelete.length
   }
 }
 
-// Executar limpeza automática a cada 5 minutos
-if (typeof window !== 'undefined') {
-  setInterval(() => {
-    ultraCache.cleanup()
-  }, 5 * 60 * 1000)
-}
-
-// Funções específicas para cada tipo de dados
+// Cache específico para cursos - ULTRA OTIMIZADO
 export const coursesCache = {
-  get: (userId: string, isAdmin: boolean) => {
-    return ultraCache.get(`courses-${userId}-${isAdmin}`)
+  generateKey: (userId: string, isAdmin: boolean) => {
+    return `courses-${isAdmin ? 'admin' : 'user'}-${userId}`
   },
   
   set: (userId: string, isAdmin: boolean, data: any) => {
-    ultraCache.set(`courses-${userId}-${isAdmin}`, data, DEFAULT_TTLS.courses)
+    const key = coursesCache.generateKey(userId, isAdmin)
+    ultraCache.set(key, data, DEFAULT_TTLS.courses)
+  },
+  
+  get: (userId: string, isAdmin: boolean) => {
+    const key = coursesCache.generateKey(userId, isAdmin)
+    return ultraCache.get(key)
+  },
+  
+  // Cache global para todos os admins
+  setGlobal: (data: any) => {
+    ultraCache.set('courses-global-admin', data, DEFAULT_TTLS.courses)
+  },
+  
+  getGlobal: () => {
+    return ultraCache.get('courses-global-admin')
   }
 }
 
+// Cache específico para vídeos
 export const videosCache = {
-  get: (courseId: string) => {
-    return ultraCache.get(`videos-${courseId}`)
+  generateKey: (courseId: string) => {
+    return `videos-${courseId}`
   },
   
   set: (courseId: string, data: any) => {
-    ultraCache.set(`videos-${courseId}`, data, DEFAULT_TTLS.videos)
+    const key = videosCache.generateKey(courseId)
+    ultraCache.set(key, data, DEFAULT_TTLS.videos)
+  },
+  
+  get: (courseId: string) => {
+    const key = videosCache.generateKey(courseId)
+    return ultraCache.get(key)
   }
 }
 
+// Cache específico para usuários
 export const usersCache = {
-  get: () => {
-    return ultraCache.get('users-all')
+  generateKey: (filterType: string = 'all') => {
+    return `users-${filterType}`
   },
   
-  set: (data: any) => {
-    ultraCache.set('users-all', data, DEFAULT_TTLS.users)
+  set: (data: any, filterType: string = 'all') => {
+    const key = usersCache.generateKey(filterType)
+    ultraCache.set(key, data, DEFAULT_TTLS.users)
+  },
+  
+  get: (filterType: string = 'all') => {
+    const key = usersCache.generateKey(filterType)
+    return ultraCache.get(key)
   }
 }
 
-export const certificatesCache = {
-  get: () => {
-    return ultraCache.get('certificates-all')
+// Cache específico para progresso
+export const progressCache = {
+  generateKey: (userId: string, courseIds?: string[]) => {
+    const suffix = courseIds ? `-${courseIds.join(',')}` : ''
+    return `progress-${userId}${suffix}`
   },
   
-  set: (data: any) => {
-    ultraCache.set('certificates-all', data, DEFAULT_TTLS.certificates)
+  set: (userId: string, data: any, courseIds?: string[]) => {
+    const key = progressCache.generateKey(userId, courseIds)
+    ultraCache.set(key, data, 30 * 60 * 1000) // 30 minutos para progresso
+  },
+  
+  get: (userId: string, courseIds?: string[]) => {
+    const key = progressCache.generateKey(userId, courseIds)
+    return ultraCache.get(key)
   }
 }
 
-export const assignmentsCache = {
-  get: () => {
-    return ultraCache.get('assignments-all')
+// Sistema de pré-carregamento inteligente
+export const smartPreloader = {
+  // Pré-carregar dados essenciais quando o usuário faz login
+  preloadUserData: async (userId: string, isAdmin: boolean) => {
+    console.log('🚀 SMART PRELOADER: Iniciando pré-carregamento inteligente')
+    
+    // Verificar se já tem dados básicos em cache
+    const hasCourses = coursesCache.get(userId, isAdmin)
+    
+    if (!hasCourses) {
+      console.log('🎯 SMART PRELOADER: Dados não encontrados, solicitando pré-carregamento')
+      // Dados não estão em cache, sinalizar necessidade de carregamento
+      return false
+    } else {
+      console.log('✅ SMART PRELOADER: Dados já disponíveis em cache')
+      return true
+    }
   },
   
-  set: (data: any) => {
-    ultraCache.set('assignments-all', data, DEFAULT_TTLS.assignments)
+  // Marcar dados como "stale" para refresh em background
+  markStale: (keys: string[]) => {
+    keys.forEach(key => {
+      const cached = globalCache.get(key)
+      if (cached) {
+        // Reduzir TTL para forçar refresh mais cedo
+        cached.ttl = Math.min(cached.ttl, 5 * 60 * 1000) // Máximo 5 minutos
+        globalCache.set(key, cached)
+      }
+    })
   }
 }
+
+// Cleanup automático a cada 30 minutos
+setInterval(() => {
+  ultraCache.cleanup()
+}, 30 * 60 * 1000)
+
+// Log estatísticas a cada 10 minutos
+setInterval(() => {
+  const stats = ultraCache.stats()
+  console.log(`📊 CACHE STATS: ${stats.active}/${stats.total} ativos, ${stats.expired} expirados`)
+}, 10 * 60 * 1000)
 
 // Log do estado do cache para debug
 if (typeof window !== 'undefined') {

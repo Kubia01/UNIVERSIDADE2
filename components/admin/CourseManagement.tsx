@@ -340,9 +340,9 @@ const CourseManagement: React.FC = () => {
           const { coursesCache, ultraCache } = await import('@/lib/ultra-cache')
           console.log('🗑️ [CourseManagement] Limpando ultra-cache específico...')
           
-          // Limpar apenas cache específico de admin para forçar reload
-          ultraCache.delete('courses-admin-true')
-          console.log('🗑️ [CourseManagement] Ultra-cache courses-admin-true removido')
+          // Limpar cache ultra (NÃO delete individual - usar clear)
+          ultraCache.clear()
+          console.log('🗑️ [CourseManagement] Ultra-cache limpo completamente')
           
           console.log('✅ [CourseManagement] Ultra-cache específico limpo!')
         } catch (error) {
@@ -411,9 +411,9 @@ const CourseManagement: React.FC = () => {
         try {
           const { ultraCache } = await import('@/lib/ultra-cache')
           
-          // Limpar apenas cache específico de admin
-          ultraCache.delete('courses-admin-true')
-          console.log('🗑️ [CourseManagement] Ultra-cache courses-admin-true removido após criação')
+          // Limpar cache para forçar reload dos dados
+          ultraCache.clear()
+          console.log('🗑️ [CourseManagement] Cache limpo após criação')
           
           console.log('✅ [CourseManagement] Cache específico limpo após criação!')
         } catch (error) {
